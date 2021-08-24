@@ -1,4 +1,5 @@
 import sys
+from iteration_utilities import duplicates
 
 def leer_archivo(nombre_archivo):
     
@@ -60,7 +61,7 @@ def crear_matriz(matriz, variables_basicas, cant_variables):
             nueva_matriz.append(nueva_fila)
             i += 1
     nueva_matriz = [encabezado] + nueva_matriz
-    print(nueva_matriz)
+    return nueva_matriz
 
 def definir_ecuaciones(diccionario_datos):
     """ Convierte el diccionario de datos a las ecuaciones que se utilizaran para las tablas"""
@@ -79,7 +80,76 @@ def definir_ecuaciones(diccionario_datos):
         i += 1
 
     var_basicas = [x for x in range(diccionario_datos["num_var"]+1, (len(diccionario_datos["fun_ob"])-1)+1)]
-    crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, diccionario_datos["num_var"] + diccionario_datos["num_rest"])
+    return crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, diccionario_datos["num_var"] + diccionario_datos["num_rest"])
+
+def encontrar_entrante(matriz):
+    fila = matriz[1][1:]
+    fila.sort()
+    columna = matriz[1].index(fila[0])
+    entrante = matriz[0][matriz[1].index(fila[0])]
+    return (entrante, columna)
+
+
+def encontrar_saliente(matriz, entrante):
+    saliente = ("",0)
+    lista = []
+    lista_degenerados = []
+    acotada = True
+
+    for i in matriz[2:]:
+        if i[entrante[1]] > 0 and i[-1] > 0:
+            acotada = False
+            lista += [(i[-1]/i[entrante[1]],i[0])]
+            lista_degenerados += [i[-1]/i[entrante[1]]]
+
+    if acotada == True:
+        saliente = "Es acotada"
+
+    else:
+        lista.sort()
+        saliente = lista[0][1]
+
+        ind_saliente = -1
+        for fila in matriz:
+            if fila[0] != saliente:
+                ind_saliente += 1
+        saliente = (lista[0][1],ind_saliente)
+
+    if list(duplicates(lista_degenerados)) != []:
+        saliente = "Es degenerada"
+
+    return saliente
+
+def encontrar_FEV(matriz, diccionario_datos):
+    U = matriz[1][-1]
+    grados_libertad = diccionario_datos["num_var"]
+    i = 0
+    lista_FEV = []
+
+    while i < grados_libertad:
+        lista_FEV += [0]
+        i += 1
+    
+    for fila in matriz[2:]:
+        lista_FEV += [fila[-1]]
+    return (U, lista_FEV)
+
+def llenar_columna(matriz, entrante, saliente):
+    i = 1
+    while i < len(matriz):
+        matriz[i][entrante[1]] = 0
+        i += 1
+
+    return matriz
+
+def llenar_fila(pivote, entrante, saliente, nueva_matriz):
+    i = 1
+    nueva_matriz[saliente[1]][0] = entrante[0]
+    while i < len(nueva_matriz[0]):
+        nueva_matriz[saliente[1]][i] = nueva_matriz[saliente[1]][i]/pivote
+        i += 1
+    nueva_matriz[saliente[1]][entrante[1]] = 1
+    return nueva_matriz
 
 def principal(args):
     
@@ -88,7 +158,16 @@ def principal(args):
     if len(args) == 3 and args[1] == "-h":
         print ("\nExiste el argumento de ayuda y el argumento del archivo\n")
         diccionario_datos = leer_archivo(args[2])
-        definir_ecuaciones(diccionario_datos)
+        matriz = definir_ecuaciones(diccionario_datos)
+        FEV = encontrar_FEV(matriz, diccionario_datos)
+        entrante = encontrar_entrante(matriz)
+        saliente = encontrar_saliente(matriz, entrante)
+        pivote = matriz[saliente[1]][entrante[1]]
+        nueva_matriz = llenar_columna(matriz, entrante, saliente)
+        nueva_matriz = llenar_fila(pivote, entrante, saliente, nueva_matriz)
+        for fila in nueva_matriz:
+            print(fila)
+        
     
     elif len(args) == 2:
 
@@ -98,7 +177,8 @@ def principal(args):
         else:
             print("\nSolo el argumento del archivo\n")
             diccionario_datos = leer_archivo(args[1])
-            definir_ecuaciones(diccionario_datos)
+            matriz = definir_ecuaciones(diccionario_datos)
+            entrante = encontrar_entrante(matriz)
 
     else:
         print("\nIngrese [-h] para recibir ayuda de utilización del programa\n")
