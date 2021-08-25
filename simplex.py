@@ -122,19 +122,25 @@ def encontrar_saliente(matriz, entrante):
 
 def encontrar_FEV(matriz, diccionario_datos):
     U = matriz[1][-1]
-    grados_libertad = diccionario_datos["num_var"]
-    i = 0
+    columna = 1
+    fila = 1
     lista_FEV = []
 
-    while i < grados_libertad:
-        lista_FEV += [0]
-        i += 1
-    
-    for fila in matriz[2:]:
-        lista_FEV += [fila[-1]]
+    for i in matriz[1][1:]:
+        if i == 0:
+            fila = 1
+            while (columna < diccionario_datos["num_rest"]+4 and fila < diccionario_datos["num_rest"]+2):
+                if matriz[fila][columna] == 1:
+                    lista_FEV += [matriz[fila][-1]]   
+
+                fila += 1
+        else:
+            lista_FEV += [0]
+        columna += 1
+
     return (U, lista_FEV)
 
-def llenar_columna(matriz, entrante, saliente):
+def llenar_columna(matriz, entrante):
     i = 1
     while i < len(matriz):
         matriz[i][entrante[1]] = 0
@@ -163,7 +169,7 @@ def principal(args):
         entrante = encontrar_entrante(matriz)
         saliente = encontrar_saliente(matriz, entrante)
         pivote = matriz[saliente[1]][entrante[1]]
-        nueva_matriz = llenar_columna(matriz, entrante, saliente)
+        nueva_matriz = llenar_columna(matriz, entrante)
         nueva_matriz = llenar_fila(pivote, entrante, saliente, nueva_matriz)
         for fila in nueva_matriz:
             print(fila)
