@@ -134,7 +134,7 @@ def encontrar_FEV(matriz):
     for i in matriz[1][1:]:
         if i == 0:
             fila = 1
-            while (columna < len(matriz[0])-1 and fila < len(matriz)):
+            while (columna < len(matriz[0]) and fila < len(matriz)):
                 if matriz[fila][columna] == 1:
                     lista_FEV += [matriz[fila][-1]]   
 
@@ -177,13 +177,13 @@ def iteracion(nueva_matriz, columna_iterada, fila_iterada, pos_columna_iterada, 
     for fila in nueva_matriz:
         if num_fila != pos_pivote and num_fila != 0 :
             indice = 0
-            cant_iteraciones = 0
             for num in fila[1:]:
-                if indice != pos_columna_iterada-1 and cant_iteraciones < len(nueva_matriz) + 1:
-                    nueva_matriz[num_fila][indice+1] = float(num+columna_iterada[num_fila-1]*fila_iterada[cant_iteraciones+1])
+
+                if indice != pos_columna_iterada-1 and indice <= len(nueva_matriz) + 1:
+                    nueva_matriz[num_fila][indice+1] = float(num+columna_iterada[num_fila-1]*fila_iterada[indice+1])
                 indice += 1
                 
-                cant_iteraciones += 1
+               
         num_fila += 1     
     return nueva_matriz
 
