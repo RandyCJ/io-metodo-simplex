@@ -120,7 +120,7 @@ def encontrar_saliente(matriz, entrante):
 
     return saliente
 
-def encontrar_FEV(matriz, diccionario_datos):
+def encontrar_FEV(matriz):
     U = matriz[1][-1]
     columna = 1
     fila = 1
@@ -129,7 +129,7 @@ def encontrar_FEV(matriz, diccionario_datos):
     for i in matriz[1][1:]:
         if i == 0:
             fila = 1
-            while (columna < diccionario_datos["num_rest"]+4 and fila < diccionario_datos["num_rest"]+2):
+            while (columna < len(matriz[0]) and fila < len(matriz)):
                 if matriz[fila][columna] == 1:
                     lista_FEV += [matriz[fila][-1]]   
 
@@ -141,12 +141,13 @@ def encontrar_FEV(matriz, diccionario_datos):
     return (U, lista_FEV)
 
 def llenar_columna(matriz, entrante):
+    nueva_matriz = matriz
     i = 1
-    while i < len(matriz):
-        matriz[i][entrante[1]] = 0
+    while i < len(nueva_matriz):
+        nueva_matriz[i][entrante[1]] = 0
         i += 1
 
-    return matriz
+    return nueva_matriz
 
 def llenar_fila(pivote, entrante, saliente, nueva_matriz):
     i = 1
@@ -157,20 +158,50 @@ def llenar_fila(pivote, entrante, saliente, nueva_matriz):
     nueva_matriz[saliente[1]][entrante[1]] = 1
     return nueva_matriz
 
+def columna_seleccionada(matriz,entrante,diccionario_datos):
+    fila = 1
+    columna = []
+    while (fila < diccionario_datos["num_rest"]+2):
+        
+        columna +=[-matriz[fila][matriz[0].index(entrante[0])]]   
+        fila += 1
+    return columna
+
+def iteracion (nueva_matriz, columna_iterada, fila_iterada, diccionario_datos, pos_columna_iterada, pos_pivote):
+    num_fila = 0
+    for fila in nueva_matriz:
+        if num_fila != pos_pivote and num_fila != 0 :
+            indice = 0
+            cant_iteraciones = 0
+            for num in fila[1:]:
+                if indice != pos_columna_iterada-1 and cant_iteraciones < diccionario_datos["num_rest"]+diccionario_datos["num_var"]+1:
+                    nueva_matriz[num_fila][indice+1] = float(num+columna_iterada[num_fila-1]*fila_iterada[cant_iteraciones+1])
+                indice += 1
+                
+                cant_iteraciones += 1
+        num_fila += 1     
+    return nueva_matriz 
+
+
 def principal(args):
     
     diccionario_datos = {}
-
+    matriz = []
+    nueva_matriz = []
     if len(args) == 3 and args[1] == "-h":
         print ("\nExiste el argumento de ayuda y el argumento del archivo\n")
         diccionario_datos = leer_archivo(args[2])
         matriz = definir_ecuaciones(diccionario_datos)
-        FEV = encontrar_FEV(matriz, diccionario_datos)
+        
+        FEV = encontrar_FEV(matriz)
         entrante = encontrar_entrante(matriz)
         saliente = encontrar_saliente(matriz, entrante)
         pivote = matriz[saliente[1]][entrante[1]]
+        columna_iterada = columna_seleccionada(matriz,entrante,diccionario_datos)
         nueva_matriz = llenar_columna(matriz, entrante)
         nueva_matriz = llenar_fila(pivote, entrante, saliente, nueva_matriz)
+        fila_iterada = nueva_matriz[saliente[1]]
+        nueva_matriz = iteracion(nueva_matriz,columna_iterada, fila_iterada,diccionario_datos,nueva_matriz[0].index(entrante[0]), (nueva_matriz[0].index(saliente[0])-1))
         for fila in nueva_matriz:
             print(fila)
         
