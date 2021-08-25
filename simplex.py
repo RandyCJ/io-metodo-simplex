@@ -92,31 +92,36 @@ def encontrar_entrante(matriz):
 
 def encontrar_saliente(matriz, entrante):
     saliente = ("",0)
-    lista = []
+    lista_divisiones = []
     lista_degenerados = []
     acotada = True
 
     for i in matriz[2:]:
-        if i[entrante[1]] > 0 and i[-1] > 0:
+        if i[entrante[1]] > 0 and i[-1] > 0: #No sabemos si se puede dividir 0/n
             acotada = False
-            lista += [(i[-1]/i[entrante[1]],i[0])]
+            lista_divisiones += [(i[-1]/i[entrante[1]], i[0])]
             lista_degenerados += [i[-1]/i[entrante[1]]]
 
-    if acotada == True:
+    if acotada:
         saliente = "Es acotada"
 
     else:
-        lista.sort()
-        saliente = lista[0][1]
-
-        ind_saliente = -1
+        lista_divisiones.sort()
+        saliente = lista_divisiones[0][1]
+        ind_saliente = 0
         for fila in matriz:
             if fila[0] != saliente:
                 ind_saliente += 1
-        saliente = (lista[0][1],ind_saliente)
+                continue
+            break
 
-    if list(duplicates(lista_degenerados)) != []:
+        saliente = (saliente, ind_saliente)
+
+    
+    if lista_divisiones[0][0] in list(duplicates(lista_degenerados)):
         saliente = "Es degenerada"
+        print("La solución es degenerada")
+        quit()
 
     return saliente
 
@@ -129,15 +134,15 @@ def encontrar_FEV(matriz):
     for i in matriz[1][1:]:
         if i == 0:
             fila = 1
-            while (columna < len(matriz[0]) and fila < len(matriz)):
+            while (columna < len(matriz[0])-1 and fila < len(matriz)):
                 if matriz[fila][columna] == 1:
                     lista_FEV += [matriz[fila][-1]]   
 
                 fila += 1
-        else:
+        elif i < len(matriz[0]):
             lista_FEV += [0]
         columna += 1
-
+        
     return (U, lista_FEV)
 
 def llenar_columna(matriz, entrante):
@@ -151,37 +156,42 @@ def llenar_columna(matriz, entrante):
 
 def llenar_fila(pivote, entrante, saliente, nueva_matriz):
     i = 1
-    nueva_matriz[saliente[1]][0] = entrante[0]
+    nueva_matriz[saliente[1]][0] = entrante[0] #Sale VB Saliente y entra la VB Entrante
     while i < len(nueva_matriz[0]):
         nueva_matriz[saliente[1]][i] = nueva_matriz[saliente[1]][i]/pivote
         i += 1
     nueva_matriz[saliente[1]][entrante[1]] = 1
     return nueva_matriz
 
-def columna_seleccionada(matriz,entrante,diccionario_datos):
+def columna_seleccionada(matriz, entrante):
+    """Retorna la columna pivote"""
     fila = 1
     columna = []
-    while (fila < diccionario_datos["num_rest"]+2):
-        
-        columna +=[-matriz[fila][matriz[0].index(entrante[0])]]   
+    while (fila < len(matriz)):
+        columna += [-matriz[fila][entrante[1]]]
         fila += 1
     return columna
 
-def iteracion (nueva_matriz, columna_iterada, fila_iterada, diccionario_datos, pos_columna_iterada, pos_pivote):
+def iteracion(nueva_matriz, columna_iterada, fila_iterada, pos_columna_iterada, pos_pivote):
     num_fila = 0
     for fila in nueva_matriz:
         if num_fila != pos_pivote and num_fila != 0 :
             indice = 0
             cant_iteraciones = 0
             for num in fila[1:]:
-                if indice != pos_columna_iterada-1 and cant_iteraciones < diccionario_datos["num_rest"]+diccionario_datos["num_var"]+1:
+                if indice != pos_columna_iterada-1 and cant_iteraciones < len(nueva_matriz) + 1:
                     nueva_matriz[num_fila][indice+1] = float(num+columna_iterada[num_fila-1]*fila_iterada[cant_iteraciones+1])
                 indice += 1
                 
                 cant_iteraciones += 1
         num_fila += 1     
-    return nueva_matriz 
+    return nueva_matriz
 
+def verificar_optimalidad(funcion_objetivo):
+    for n in funcion_objetivo[1:]:
+        if n < 0:
+            return False
+    return True
 
 def principal(args):
     
@@ -192,20 +202,33 @@ def principal(args):
         print ("\nExiste el argumento de ayuda y el argumento del archivo\n")
         diccionario_datos = leer_archivo(args[2])
         matriz = definir_ecuaciones(diccionario_datos)
+        i = 0
+        while(not(verificar_optimalidad(matriz[1]))):
+            print("\n\nIteracion " + str(i))
+            for fila in matriz:
+                print(fila)
+            FEV = encontrar_FEV(matriz)
+            entrante = encontrar_entrante(matriz)
+            saliente = encontrar_saliente(matriz, entrante)
+            pivote = matriz[saliente[1]][entrante[1]]
+            columna_iterada = columna_seleccionada(matriz, entrante)
+            matriz = llenar_columna(matriz, entrante)
+            matriz = llenar_fila(pivote, entrante, saliente, matriz)
+            fila_iterada = matriz[saliente[1]]
+            matriz = iteracion(matriz, columna_iterada, fila_iterada, entrante[1], saliente[1])
+            print("FEV: " + str(FEV[1]))
+            print("U: " + str(FEV[0]))
+            print("Variable básica entrante: " + entrante[0])
+            print("Variable básica saliente: " + saliente[0])
+            print("Pivote: " + str(pivote))
+            i += 1
         
-        FEV = encontrar_FEV(matriz)
-        entrante = encontrar_entrante(matriz)
-        saliente = encontrar_saliente(matriz, entrante)
-        pivote = matriz[saliente[1]][entrante[1]]
-        columna_iterada = columna_seleccionada(matriz,entrante,diccionario_datos)
-        nueva_matriz = llenar_columna(matriz, entrante)
-        nueva_matriz = llenar_fila(pivote, entrante, saliente, nueva_matriz)
-        fila_iterada = nueva_matriz[saliente[1]]
-        nueva_matriz = iteracion(nueva_matriz,columna_iterada, fila_iterada,diccionario_datos,nueva_matriz[0].index(entrante[0]), (nueva_matriz[0].index(saliente[0])-1))
-        for fila in nueva_matriz:
+        print("\n\nIteracion " + str(i))
+        for fila in matriz:
             print(fila)
-        
-    
+        FEV = encontrar_FEV(matriz)
+        print("FEV: " + str(FEV[1]))
+        print("U: " + str(FEV[0]))
     elif len(args) == 2:
 
         if args[1] == "-h":
