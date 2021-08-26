@@ -283,7 +283,6 @@ def leer_archivo(nombre_archivo):
     except:
         print("\nEl archivo no se pudo abrir o no existe\n")
 
-<<<<<<< Updated upstream
 def imprimir_ayuda():
     str_ayuda = "\n   _____ _                 _           "
     str_ayuda += "\n  / ____(_)               | |          "
@@ -308,7 +307,6 @@ def imprimir_ayuda():
     str_ayuda += "\nSe debe utilizar un archivo de texto plano\n"
 
     print(str_ayuda)
-=======
 def escribir_archivo(nombre_archivo, texto):
     nombre_archivo= str(nombre_archivo).replace(".txt", "")
     nombre_archivo += "_solucion.txt"
@@ -332,7 +330,6 @@ def limpiar_archivo_solucion(nombre_archivo):
     except:
         print("\nNo se pudo crear o abrir el archivo\n")
 
->>>>>>> Stashed changes
 
 def principal(args):
     
