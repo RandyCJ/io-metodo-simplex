@@ -129,20 +129,30 @@ def encontrar_FEV(matriz):
     U = matriz[1][-1]
     columna = 1
     lista_FEV = []
+    var_basicas = encontrar_basicas(matriz)
+    lista_multiples = []
+    bandera_multiples = False
 
     for i in matriz[1][1:]:
         if i == 0:
-            fila = 1
-            while (columna < len(matriz[0]) and fila < len(matriz)):
-                if matriz[fila][columna] == 1:
-                    lista_FEV += [matriz[fila][-1]]   
-                
-                fila += 1
+            if not(matriz[0][columna] in var_basicas) and columna < len(matriz[0])-1:
+                bandera_multiples = True
+                lista_multiples = [bandera_multiples, matriz[0][columna], columna]
+                lista_FEV += [0]
+            else:
+                fila = 1
+                while (columna < len(matriz[0]) and fila < len(matriz)):
+                    if matriz[fila][columna] == 1:
+                        lista_FEV += [matriz[fila][-1]]   
+                    
+                    fila += 1
+
         elif columna < len(matriz[0])-1:
             lista_FEV += [0]
+
         columna += 1
         
-    return (U, lista_FEV)
+    return (U, lista_FEV, lista_multiples)
 
 def llenar_columna(matriz, entrante):
     nueva_matriz = matriz
@@ -192,13 +202,17 @@ def verificar_optimalidad(funcion_objetivo):
             return False
     return True
 
+def encontrar_basicas(matriz):
+    var_basicas = []
+    for fila in matriz[2:]:
+        var_basicas.append(fila[0])
+    return var_basicas
+
 def principal(args):
     
     diccionario_datos = {}
     matriz = []
-    nueva_matriz = []
     if len(args) == 3 and args[1] == "-h":
-        print ("\nExiste el argumento de ayuda y el argumento del archivo\n")
         diccionario_datos = leer_archivo(args[2])
         matriz = definir_ecuaciones(diccionario_datos)
         i = 0
@@ -228,16 +242,79 @@ def principal(args):
         FEV = encontrar_FEV(matriz)
         print("FEV: " + str(FEV[1]))
         print("U: " + str(FEV[0]))
+        if FEV[2] != []:
+            if FEV[2][0]:
+                entrante = (FEV[2][1], FEV[2][2])
+                saliente = encontrar_saliente(matriz, entrante)
+                pivote = matriz[saliente[1]][entrante[1]]
+                columna_iterada = columna_seleccionada(matriz, entrante)
+                matriz = llenar_columna(matriz, entrante)
+                matriz = llenar_fila(pivote, entrante, saliente, matriz)
+                fila_iterada = matriz[saliente[1]]
+                matriz = iteracion(matriz, columna_iterada, fila_iterada, entrante[1], saliente[1])
+                print("Variable básica entrante: " + entrante[0])
+                print("Variable básica saliente: " + saliente[0])
+                print("Pivote: " + str(pivote))
+                print("\n\nIteracion extra")
+                for fila in matriz:
+                    print(fila)
+                FEV = encontrar_FEV(matriz)
+                print("FEV: " + str(FEV[1]))
+                print("U: " + str(FEV[0]))
     elif len(args) == 2:
 
         if args[1] == "-h":
             print("\nAca escribiremos el código de ayuda\n")
         
         else:
-            print("\nSolo el argumento del archivo\n")
             diccionario_datos = leer_archivo(args[1])
             matriz = definir_ecuaciones(diccionario_datos)
-            entrante = encontrar_entrante(matriz)
+            i = 0
+            while(not(verificar_optimalidad(matriz[1]))):
+                print("\n\nIteracion " + str(i))
+                for fila in matriz:
+                    print(fila)
+                FEV = encontrar_FEV(matriz)
+                entrante = encontrar_entrante(matriz)
+                saliente = encontrar_saliente(matriz, entrante)
+                pivote = matriz[saliente[1]][entrante[1]]
+                columna_iterada = columna_seleccionada(matriz, entrante)
+                matriz = llenar_columna(matriz, entrante)
+                matriz = llenar_fila(pivote, entrante, saliente, matriz)
+                fila_iterada = matriz[saliente[1]]
+                matriz = iteracion(matriz, columna_iterada, fila_iterada, entrante[1], saliente[1])
+                print("FEV: " + str(FEV[1]))
+                print("U: " + str(FEV[0]))
+                print("Variable básica entrante: " + entrante[0])
+                print("Variable básica saliente: " + saliente[0])
+                print("Pivote: " + str(pivote))
+                i += 1
+            
+            print("\n\nIteracion " + str(i))
+            for fila in matriz:
+                print(fila)
+            FEV = encontrar_FEV(matriz)
+            print("FEV: " + str(FEV[1]))
+            print("U: " + str(FEV[0]))
+            if FEV[2] != []:
+                if FEV[2][0]:
+                    entrante = (FEV[2][1], FEV[2][2])
+                    saliente = encontrar_saliente(matriz, entrante)
+                    pivote = matriz[saliente[1]][entrante[1]]
+                    columna_iterada = columna_seleccionada(matriz, entrante)
+                    matriz = llenar_columna(matriz, entrante)
+                    matriz = llenar_fila(pivote, entrante, saliente, matriz)
+                    fila_iterada = matriz[saliente[1]]
+                    matriz = iteracion(matriz, columna_iterada, fila_iterada, entrante[1], saliente[1])
+                    print("Variable básica entrante: " + entrante[0])
+                    print("Variable básica saliente: " + saliente[0])
+                    print("Pivote: " + str(pivote))
+                    print("\n\nIteracion extra")
+                    for fila in matriz:
+                        print(fila)
+                    FEV = encontrar_FEV(matriz)
+                    print("FEV: " + str(FEV[1]))
+                    print("U: " + str(FEV[0]))
 
     else:
         print("\nIngrese [-h] para recibir ayuda de utilización del programa\n")
