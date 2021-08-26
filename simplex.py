@@ -282,6 +282,7 @@ def leer_archivo(nombre_archivo):
         
     except:
         print("\nEl archivo no se pudo abrir o no existe\n")
+        quit()
 
 def imprimir_ayuda():
     str_ayuda = "\n   _____ _                 _           "
@@ -374,18 +375,32 @@ def principal(args):
         else:
             diccionario_datos = leer_archivo(args[1])
             matriz = Matriz(diccionario_datos)
-
+            limpiar_archivo_solucion(args[1])
+        
             while(True):
-                matriz.imprimir_matriz()
-                matriz.iterar()
-                print(matriz.datos_solucion())
                 
+                if matriz.soluciones_multiples:
+                    print(matriz.datos_sol_optima())
+    
+                escribir_archivo(args[1],"\nIteracion " + str(num_iteracion))
+                escribir_archivo(args[1],matriz.matriz_to_string())
+                matriz.iterar()
+                escribir_archivo(args[1],matriz.datos_solucion())
+
                 if (matriz.verificar_optimalidad()):
                     if matriz.soluciones_multiples:
+                        escribir_archivo(args[1], "Solución múltiple en: " + matriz.columna_pivote[0])
+                        print ("Solución múltiple en: " + matriz.columna_pivote[0])
+                        escribir_archivo(args[1],"\nIteracion extra")
                         print("\nIteracion extra")
-                    matriz.imprimir_matriz()
+                    else:
+                        escribir_archivo(args[1],"\nIteracion Final")  
+                    escribir_archivo(args[1], matriz.matriz_to_string())
                     print(matriz.datos_sol_optima())
+                    escribir_archivo(args[1],matriz.datos_sol_optima())
                     break
+
+                num_iteracion += 1
     else:
         print("\nIngrese [-h] para recibir ayuda de utilización del programa\n")
         return
