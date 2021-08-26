@@ -1,4 +1,5 @@
-import sys
+import sys 
+import os
 from iteration_utilities import duplicates
 
 class Matriz:
@@ -199,15 +200,14 @@ class Matriz:
                 if funcion_objetivo[i] == 0:
                     if not(self.matriz[0][i] in self.variables_basicas):
                         self.soluciones_multiples = True
-                        print("SM en " + str(self.matriz[0][i]))
                         return False
                 i += 1
             
         return True
 
-    def toString(self):
+    def datos_solucion(self):
 
-        str_matriz = "\nFEV: " + str(self.FEV)
+        str_matriz = "FEV: " + str(self.FEV)
         str_matriz += "\nU: " + str(self.U)
         str_matriz += "\nVariable básica entrante: " + self.columna_pivote[0]
         str_matriz += "\nVariable básica saliente: " + self.fila_pivote[0]
@@ -215,14 +215,28 @@ class Matriz:
 
         return str_matriz
 
-    def imprimir_matriz(self):
-        print("\n")
-        for i in self.matriz:
-            print(i)
-    
+    def matriz_to_string(self):
+        matriz_redondeada = self.matriz
+        fila = 1
+        columna = 1
+        while(fila < len(self.matriz)):
+            columna = 1
+            while(columna < len(self.matriz[0])):
+                matriz_redondeada[fila][columna] = round(self.matriz[fila][columna],2)
+                columna += 1
+            fila += 1
+        
+        linea_string = [[str(casilla) for casilla in linea ] for linea in matriz_redondeada]
+        lista_posicion = [max(map(len, columna)) for columna in zip(*linea_string)]
+        cambia_formato = '\t'.join('{{:{}}}'.format(x) for x in lista_posicion)
+        tabla = [cambia_formato.format(*linea) for linea in linea_string]
+
+        return "\n".join(tabla)
+        
+
     def datos_sol_optima(self):
         self.encontrar_FEV()
-        datos = "\nFEV: " + str(self.FEV)
+        datos = "FEV: " + str(self.FEV)
         datos += "\nU: " + str(self.U)
         if self.degenerada:
             datos += "\nLa solución es degenerada"
@@ -263,12 +277,13 @@ def leer_archivo(nombre_archivo):
                     diccionario_datos["rest"] += [list(map(int, lista_datos))]
                 
                 contador += 1
-
+        archivo.close()
         return diccionario_datos
         
     except:
         print("\nEl archivo no se pudo abrir o no existe\n")
 
+<<<<<<< Updated upstream
 def imprimir_ayuda():
     str_ayuda = "\n   _____ _                 _           "
     str_ayuda += "\n  / ____(_)               | |          "
@@ -293,28 +308,67 @@ def imprimir_ayuda():
     str_ayuda += "\nSe debe utilizar un archivo de texto plano\n"
 
     print(str_ayuda)
+=======
+def escribir_archivo(nombre_archivo, texto):
+    nombre_archivo= str(nombre_archivo).replace(".txt", "")
+    nombre_archivo += "_solucion.txt"
+    try:
+        with open(nombre_archivo,"a") as archivo:
+            archivo.write(texto + os.linesep)
+
+    except:
+        print("\nNo se pudo crear o abrir el archivo\n")
+    
+    archivo.close()
+
+def limpiar_archivo_solucion(nombre_archivo):
+    nombre_archivo= str(nombre_archivo).replace(".txt", "")
+    nombre_archivo += "_solucion.txt"
+    try:
+        with open(nombre_archivo,"w") as archivo:
+            archivo.write("")
+
+        archivo.close()
+    except:
+        print("\nNo se pudo crear o abrir el archivo\n")
+
+>>>>>>> Stashed changes
 
 def principal(args):
     
     diccionario_datos = {}
+    num_iteracion = 0
 
     if len(args) == 3 and args[1] == "-h":
         imprimir_ayuda()
         diccionario_datos = leer_archivo(args[2])
         matriz = Matriz(diccionario_datos)
-
+        limpiar_archivo_solucion(args[2])
+       
         while(True):
-            matriz.imprimir_matriz()
-            matriz.iterar()
-            print(matriz.toString())
             
+            if matriz.soluciones_multiples:
+                print(matriz.datos_sol_optima())
+ 
+            escribir_archivo(args[2],"\nIteracion " + str(num_iteracion))
+            escribir_archivo(args[2],matriz.matriz_to_string())
+            matriz.iterar()
+            escribir_archivo(args[2],matriz.datos_solucion())
+
             if (matriz.verificar_optimalidad()):
                 if matriz.soluciones_multiples:
+                    escribir_archivo(args[2], "Solución múltiple en: " + matriz.columna_pivote[0])
+                    print ("Solución múltiple en: " + matriz.columna_pivote[0])
+                    escribir_archivo(args[2],"\nIteracion extra")
                     print("\nIteracion extra")
-                matriz.imprimir_matriz()
+                else:
+                    escribir_archivo(args[2],"\nIteracion Final")  
+                escribir_archivo(args[2], matriz.matriz_to_string())
                 print(matriz.datos_sol_optima())
+                escribir_archivo(args[2],matriz.datos_sol_optima())
                 break
 
+            num_iteracion += 1
     elif len(args) == 2:
 
         if args[1] == "-h":
@@ -327,7 +381,7 @@ def principal(args):
             while(True):
                 matriz.imprimir_matriz()
                 matriz.iterar()
-                print(matriz.toString())
+                print(matriz.datos_solucion())
                 
                 if (matriz.verificar_optimalidad()):
                     if matriz.soluciones_multiples:
