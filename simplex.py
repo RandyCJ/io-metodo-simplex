@@ -11,6 +11,7 @@ class Matriz:
     pivote = 1
     acotada = False
     degenerada = False
+    var_degeneradas = []
     soluciones_multiples = False
     U = 0
     FEV = []
@@ -72,6 +73,7 @@ class Matriz:
     def encontrar_saliente(self):
         lista_divisiones = []
         lista_degenerados = []
+        self.var_degeneradas = []
         self.acotada = True
         vb_saliente = ""
 
@@ -82,7 +84,9 @@ class Matriz:
                 lista_degenerados += [i[-1]/i[self.columna_pivote[1]]]
 
         if self.acotada:
-            print("Es acotada")
+            print (f'La columna {self.columna_pivote[1]+1!r} ' +
+                   f'con la VB entrante {self.columna_pivote[0]} no tiene números mayores a 0')
+            print("Por ello la solución es no acotada")
             quit()
 
         lista_divisiones.sort()
@@ -96,9 +100,15 @@ class Matriz:
             break
 
         self.fila_pivote = (vb_saliente, ind_saliente)
-        
+         
         if lista_divisiones[0][0] in list(duplicates(lista_degenerados)):
             self.degenerada = True
+            i = 0
+            self.var_degeneradas = [lista_divisiones[0][0]]
+            while i < len(lista_divisiones):
+                if lista_divisiones[i][0] == lista_divisiones[0][0]:
+                    self.var_degeneradas += [lista_divisiones[i][1]]
+                i += 1
     
     def encontrar_basicas(self):
         var_basicas = []
@@ -259,11 +269,37 @@ def leer_archivo(nombre_archivo):
     except:
         print("\nEl archivo no se pudo abrir o no existe\n")
 
+def imprimir_ayuda():
+    str_ayuda = "\n   _____ _                 _           "
+    str_ayuda += "\n  / ____(_)               | |          "
+    str_ayuda += "\n | (___  _ _ __ ___  _ __ | | _____  __"
+    str_ayuda += "\n  \___ \| | '_ ` _ \| '_ \| |/ _ \ \/ /"
+    str_ayuda += "\n  ____) | | | | | | | |_) | |  __/>  < "
+    str_ayuda += "\n |_____/|_|_| |_| |_| .__/|_|\___/_/\_\\"
+    str_ayuda += "\n                    | |                "
+    str_ayuda += "\n                    |_|\n"
+    str_ayuda += "\nEjecución de programa: \n"
+    str_ayuda += "\nPara ver la ayuda y correr el programa $ python simplex.py -h problema1.txt"
+    str_ayuda += "\nPara ver la ayuda $ python simplex.py -h"
+    str_ayuda += "\nPara solamente correr el programa $ python simplex.py problema1.txt\n"
+    str_ayuda += "\nEjemplo para formato de archivo de datos: \n"
+    str_ayuda += "\n---------------------------------------------------------------"
+    str_ayuda += "\n| 0,max,2,3                                                   |"
+    str_ayuda += "\n| 3,5                                                         |"
+    str_ayuda += "\n| 2,1,<=,6                                                    |"
+    str_ayuda += "\n| -1,3,<=,9                                                   |"
+    str_ayuda += "\n| 0,1,<=,4                                                    |"
+    str_ayuda += "\n---------------------------------------------------------------\n"
+    str_ayuda += "\nSe debe utilizar un archivo de texto plano\n"
+
+    print(str_ayuda)
+
 def principal(args):
     
     diccionario_datos = {}
 
     if len(args) == 3 and args[1] == "-h":
+        imprimir_ayuda()
         diccionario_datos = leer_archivo(args[2])
         matriz = Matriz(diccionario_datos)
 
@@ -282,10 +318,10 @@ def principal(args):
     elif len(args) == 2:
 
         if args[1] == "-h":
-            print("\nAca escribiremos el código de ayuda\n")
+            imprimir_ayuda()
         
         else:
-            diccionario_datos = leer_archivo(args[2])
+            diccionario_datos = leer_archivo(args[1])
             matriz = Matriz(diccionario_datos)
 
             while(True):
