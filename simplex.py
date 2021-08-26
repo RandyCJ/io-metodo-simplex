@@ -128,7 +128,6 @@ def encontrar_saliente(matriz, entrante):
 def encontrar_FEV(matriz):
     U = matriz[1][-1]
     columna = 1
-    fila = 1
     lista_FEV = []
 
     for i in matriz[1][1:]:
@@ -137,9 +136,9 @@ def encontrar_FEV(matriz):
             while (columna < len(matriz[0]) and fila < len(matriz)):
                 if matriz[fila][columna] == 1:
                     lista_FEV += [matriz[fila][-1]]   
-
+                
                 fila += 1
-        elif i < len(matriz[0]):
+        elif columna < len(matriz[0])-1:
             lista_FEV += [0]
         columna += 1
         
