@@ -14,6 +14,7 @@ class Matriz:
     degenerada = False
     var_degeneradas = []
     soluciones_multiples = False
+    nom_archivo = ""
     U = 0
     FEV = []
 
@@ -85,9 +86,12 @@ class Matriz:
                 lista_degenerados += [i[-1]/i[self.columna_pivote[1]]]
 
         if self.acotada:
-            print (f'La columna {self.columna_pivote[1]+1!r} ' +
-                   f'con la VB entrante {self.columna_pivote[0]} no tiene números mayores a 0')
-            print("Por ello la solución es no acotada")
+            msj_acotada = 'La columna ' + str(self.columna_pivote[1]+1)
+            msj_acotada += ' con la VB entrante ' + self.columna_pivote[0]
+            msj_acotada += ' no tiene números mayores a 0'
+            msj_acotada += "\nPor ello la solución es no acotada"
+            escribir_archivo(self.nom_archivo,"\n"+msj_acotada)
+            print(msj_acotada)
             quit()
 
         lista_divisiones.sort()
@@ -238,8 +242,17 @@ class Matriz:
         self.encontrar_FEV()
         datos = "FEV: " + str(self.FEV)
         datos += "\nU: " + str(self.U)
+        i = 1
         if self.degenerada:
-            datos += "\nLa solución es degenerada"
+            datos += "\n\nLas variables "
+            while i < len(self.var_degeneradas):
+                if i == len(self.var_degeneradas)-1:
+                    datos += self.var_degeneradas[i]
+                else:
+                    datos += self.var_degeneradas[i] + ", "
+                i += 1
+            datos += " son degeneradas, su resultado en común es " + str(round(self.var_degeneradas[0],2))
+            datos += "\npor lo tanto, la solución es degenerada"
         return datos
 
 """Fuera de clase Matriz"""
@@ -297,7 +310,13 @@ def imprimir_ayuda():
     str_ayuda += "\nPara ver la ayuda y correr el programa $ python simplex.py -h problema1.txt"
     str_ayuda += "\nPara ver la ayuda $ python simplex.py -h"
     str_ayuda += "\nPara solamente correr el programa $ python simplex.py problema1.txt\n"
-    str_ayuda += "\nEjemplo para formato de archivo de datos: \n"
+    str_ayuda += "\nEstructura para formato en archivo de texto plano: \n"
+    str_ayuda += "\nMétodo, optimización, número de variables de decisión, número de restricciones"
+    str_ayuda += "\nCoeficientes de la función objetivo"
+    str_ayuda += "\nCoeficientes de las restricciones y signo de restricción\n"
+    str_ayuda += "\nMétodo es un valor numérico [ 0=Simplex, 1=GranM, 2=DosFases] "
+    str_ayuda += "y optimización se indica de forma textual con min o max.\n"
+    str_ayuda += "\nEjemplo para formato en archivo de texto plano: \n"
     str_ayuda += "\n---------------------------------------------------------------"
     str_ayuda += "\n| 0,max,2,3                                                   |"
     str_ayuda += "\n| 3,5                                                         |"
@@ -305,12 +324,12 @@ def imprimir_ayuda():
     str_ayuda += "\n| -1,3,<=,9                                                   |"
     str_ayuda += "\n| 0,1,<=,4                                                    |"
     str_ayuda += "\n---------------------------------------------------------------\n"
-    str_ayuda += "\nSe debe utilizar un archivo de texto plano\n"
 
     print(str_ayuda)
+
 def escribir_archivo(nombre_archivo, texto):
-    nombre_archivo= str(nombre_archivo).replace(".txt", "")
-    nombre_archivo += "_solucion.txt"
+    nombre_archivo = str(nombre_archivo).replace(".txt", "")
+    nombre_archivo += "_solution.txt"
     try:
         with open(nombre_archivo,"a") as archivo:
             archivo.write(texto + os.linesep)
@@ -322,7 +341,7 @@ def escribir_archivo(nombre_archivo, texto):
 
 def limpiar_archivo_solucion(nombre_archivo):
     nombre_archivo= str(nombre_archivo).replace(".txt", "")
-    nombre_archivo += "_solucion.txt"
+    nombre_archivo += "_solution.txt"
     try:
         with open(nombre_archivo,"w") as archivo:
             archivo.write("")
@@ -342,6 +361,7 @@ def principal(args):
         diccionario_datos = leer_archivo(args[2])
         matriz = Matriz(diccionario_datos)
         limpiar_archivo_solucion(args[2])
+        matriz.nom_archivo = args[2]
        
         while(True):
             
@@ -376,6 +396,7 @@ def principal(args):
             diccionario_datos = leer_archivo(args[1])
             matriz = Matriz(diccionario_datos)
             limpiar_archivo_solucion(args[1])
+            matriz.nom_archivo = args[1]
         
             while(True):
                 
