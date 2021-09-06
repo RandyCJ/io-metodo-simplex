@@ -3,16 +3,20 @@ import os
 from iteration_utilities import duplicates
 
 class Matriz:
-    
-    matriz = []
-    variables_basicas = []
-    columna_pivote = ()
-    fila_pivote = ()
+
+    """ Clase matriz, contiene todos los métodos necesarios para realizar las operaciones del método simplex,
+       y contiene también los atributos necesarios del método simplex
+    """
+
+    matriz = [] # La matriz con la fila 0 con las variables y con la columna 0 con las variables básicas
+    variables_basicas = [] # Contiene las variables básicas en la columna 0 en un determinado punto
+    columna_pivote = () # Contiene la posición de la variable básica entrante y la misma variable entrante de una iteración
+    fila_pivote = () # Contiene la posición de la variable básica saliente y la misma variable saliente de una iteración
     indice_pivote = ()
     pivote = 1
     acotada = False
     degenerada = False
-    var_degeneradas = []
+    var_degeneradas = [] # Contiene las variables que son degeneradas si existen
     soluciones_multiples = False
     nom_archivo = ""
     U = 0
@@ -22,6 +26,10 @@ class Matriz:
         self.definir_ecuaciones(dict_datos)
 
     def crear_matriz(self, matriz, variables_basicas, cant_variables):
+        """ Crea la matriz junto con el encabezado de las variables y los números y valores de cada una
+            E: una matriz con solo los valores, las variables que van en la columna 0 y la cantidad de variables que deben haber
+            S: N/A
+        """
         encabezado = ["VB"]
 
         for i in range(cant_variables):
@@ -47,12 +55,15 @@ class Matriz:
         self.matriz = [encabezado] + nueva_matriz
 
     def definir_ecuaciones(self, diccionario_datos):
-        """ Convierte el diccionario de datos a las ecuaciones que se utilizaran para las tablas"""
+        """ Convierte el diccionario de datos a las ecuaciones que se utilizaran para las tablas
+            E: Recibe el diccionario de datos con los datos que se recolectaron al leer el archivo
+            S: N/A
+        """
 
         diccionario_datos["fun_ob"] = [-x for x in diccionario_datos["fun_ob"]] #Se vuelven negativos todos los números
-        diccionario_datos["fun_ob"] += [0] * (diccionario_datos["num_rest"] + 1)
+        diccionario_datos["fun_ob"] += [0] * (diccionario_datos["num_rest"] + 1) #Agrega los ceros dependiendo de la cantidad de restricciones
 
-        for rest in diccionario_datos["rest"]:
+        for rest in diccionario_datos["rest"]: #Coloca los ceros y unos en las restricciones
             tmp = rest.pop(-1)
             rest += [0] * diccionario_datos["num_rest"]
             rest += [tmp]
@@ -66,6 +77,10 @@ class Matriz:
         self.crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, diccionario_datos["num_var"] + diccionario_datos["num_rest"])
 
     def encontrar_entrante(self):
+        """ Encuentra cual es la columna con la variable entrante, esto viendo cual tiene el menor valor en U
+            E: N/A
+            S: N/A
+        """
         if self.soluciones_multiples: #Si es multiple no hace falta sacar columna entrante
             return 0
         fila = self.matriz[1][1:]
@@ -73,6 +88,11 @@ class Matriz:
         self.columna_pivote = (self.matriz[0][self.matriz[1].index(fila[0])], self.matriz[1].index(fila[0]))
 
     def encontrar_saliente(self):
+        """ Encuentra cual es la columna con la variable entrante, esto calculando el pivote
+            E: N/A
+            S: N/A
+        """
+
         lista_divisiones = []
         lista_degenerados = []
         self.var_degeneradas = []
@@ -83,9 +103,9 @@ class Matriz:
             if i[self.columna_pivote[1]] > 0 and i[-1] >= 0:
                 self.acotada = False
                 lista_divisiones += [(i[-1]/i[self.columna_pivote[1]], i[0])]
-                lista_degenerados += [i[-1]/i[self.columna_pivote[1]]]
+                lista_degenerados += [i[-1]/i[self.columna_pivote[1]]] #Guardamos todos los resultados para al final ver si hay degenerados
 
-        if self.acotada:
+        if self.acotada: # Si ninguna division es valida sería no acotada
             msj_acotada = 'La columna ' + str(self.columna_pivote[1]+1)
             msj_acotada += ' con la VB entrante ' + self.columna_pivote[0]
             msj_acotada += ' no tiene números mayores a 0'
@@ -98,7 +118,7 @@ class Matriz:
         vb_saliente = lista_divisiones[0][1]
         ind_saliente = 0
 
-        for fila in self.matriz:
+        for fila in self.matriz: #Calculamos el índice de la variable entrante
             if fila[0] != vb_saliente:
                 ind_saliente += 1
                 continue
@@ -106,7 +126,7 @@ class Matriz:
 
         self.fila_pivote = (vb_saliente, ind_saliente)
          
-        if lista_divisiones[0][0] in list(duplicates(lista_degenerados)):
+        if lista_divisiones[0][0] in list(duplicates(lista_degenerados)): #Revisamos que no hayan divisiones iguales que serían degeneradas
             self.degenerada = True
             i = 0
             self.var_degeneradas = [lista_divisiones[0][0]]
@@ -116,12 +136,20 @@ class Matriz:
                 i += 1
     
     def encontrar_basicas(self):
+        """ Guarda las variables básicas en la columna 0 de cada fila
+            E: N/A
+            S: N/A
+        """
         var_basicas = []
         for fila in self.matriz[2:]:
             var_basicas.append(fila[0])
         self.variables_basicas = var_basicas
 
     def encontrar_FEV(self):
+        """ Encuentra la FEV de la matriz actual
+            E: N/A
+            S: N/A
+        """
         self.U = self.matriz[1][-1]
         columna = 1
         self.FEV = []
@@ -146,7 +174,11 @@ class Matriz:
             columna += 1
     
     def obtener_columna_pivote(self):
-        """Almacena la columna pivote donde está el pivote"""
+        """ Almacena la columna pivote donde está el pivote antes de convertirla en ceros
+            E: N/A
+            S: N/A
+        """
+         
         fila = 1
         columna = []
         while (fila < len(self.matriz)):
@@ -155,6 +187,11 @@ class Matriz:
         self.columna_pivote = (self.columna_pivote[0], self.columna_pivote[1], columna)
 
     def modificar_linea_pivote(self):
+        """ Modifica la línea y columna donde se encuentra el pivote
+            La linea la divide entre el pivote, y la columna convierte todo en ceros.
+            E: N/A
+            S: N/A
+        """
         #Primero se convierten todos los números de la columna donde está el pivote a 0
         self.pivote = self.matriz[self.fila_pivote[1]][self.columna_pivote[1]]
         i = 1
@@ -171,6 +208,10 @@ class Matriz:
         self.matriz[self.fila_pivote[1]][self.columna_pivote[1]] = 1
 
     def iteracion(self):
+        """ Hace las operaciones en cada fila para convertir la columna pivote en ceros
+            E: N/A
+            S: N/A
+        """
         num_fila = 0
         for fila in self.matriz:
             if num_fila != self.fila_pivote[1] and num_fila != 0 :
@@ -182,6 +223,10 @@ class Matriz:
             num_fila += 1
     
     def iterar(self):
+        """ Función encargada de llamar a las operaciones necesarias para realizar una iteración
+            E: N/A
+            S: N/A
+        """
         self.encontrar_FEV()
         self.encontrar_entrante()
         self.encontrar_saliente()
@@ -190,6 +235,11 @@ class Matriz:
         self.iteracion()
 
     def verificar_optimalidad(self):
+        """ Verifica en la Fila U que no hayan negativos
+            También revisa que no hayan soluciones múltiples
+            E: N/A
+            S: N/A
+        """
         funcion_objetivo = self.matriz[1]
         #Primero revisa que no hayan negativos
         for n in funcion_objetivo[1:]:
@@ -210,7 +260,10 @@ class Matriz:
         return True
 
     def datos_solucion(self):
-
+        """ Crea un string con los datos de solución de la matriz actual
+            E: N/A
+            S: string con los datos de la solución
+        """
         str_matriz = "FEV: " + str(self.FEV)
         str_matriz += "\nU: " + str(self.U)
         str_matriz += "\nVariable básica entrante: " + self.columna_pivote[0]
@@ -220,6 +273,10 @@ class Matriz:
         return str_matriz
 
     def matriz_to_string(self):
+        """ Convierte la matriz en un string legible e imprimible
+            E: N/A
+            S: string de la matriz
+        """
         matriz_redondeada = self.matriz
         fila = 1
         columna = 1
@@ -239,6 +296,10 @@ class Matriz:
         
 
     def datos_sol_optima(self):
+        """ Crea un string con los datos de una solución óptima
+            E: N/A
+            S: string con datos de una solución óptima
+        """
         self.encontrar_FEV()
         datos = "FEV: " + str(self.FEV)
         datos += "\nU: " + str(self.U)
@@ -258,7 +319,10 @@ class Matriz:
 """Fuera de clase Matriz"""
 
 def leer_archivo(nombre_archivo):
-    
+    """ Función encargada de leer el archivo, también guarda todos los datos en un diccionario de datos
+            E: string con el nombre del archivo
+            S: el diccionario de datos con los datos ya guardados
+    """
     contador = 0
     lista_datos = []
     diccionario_datos = { 
@@ -298,6 +362,10 @@ def leer_archivo(nombre_archivo):
         quit()
 
 def imprimir_ayuda():
+    """ Imprime en pantalla la guia para la utilización del programa
+            E: N/A
+            S: N/A
+    """
     str_ayuda = "\n   _____ _                 _           "
     str_ayuda += "\n  / ____(_)               | |          "
     str_ayuda += "\n | (___  _ _ __ ___  _ __ | | _____  __"
@@ -328,6 +396,10 @@ def imprimir_ayuda():
     print(str_ayuda)
 
 def escribir_archivo(nombre_archivo, texto):
+    """ Función encargada de escribir texto en un archivo
+            E: recibe la ruta del archivo y el texto a escribir
+            S: N/A
+    """
     nombre_archivo = str(nombre_archivo).replace(".txt", "")
     nombre_archivo += "_solution.txt"
     try:
@@ -340,6 +412,10 @@ def escribir_archivo(nombre_archivo, texto):
     archivo.close()
 
 def limpiar_archivo_solucion(nombre_archivo):
+    """ Limpia el archivo en caso de que tenga algo escrito
+            E: ruta del archivo
+            S: N/A
+    """
     nombre_archivo= str(nombre_archivo).replace(".txt", "")
     nombre_archivo += "_solution.txt"
     try:
@@ -352,6 +428,10 @@ def limpiar_archivo_solucion(nombre_archivo):
 
 
 def principal(args):
+    """ Función encargada de la ejecución del programa
+            E: recibe los argumento ingresados por consola
+            S: N/A
+    """
     
     diccionario_datos = {}
     num_iteracion = 0
