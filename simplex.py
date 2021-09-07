@@ -63,11 +63,12 @@ class Matriz:
         diccionario_datos["fun_ob"] = [-x for x in diccionario_datos["fun_ob"]] #Se vuelven negativos todos los números
         diccionario_datos["fun_ob"] += [0] * (diccionario_datos["num_rest"] + 1) #Agrega los ceros dependiendo de la cantidad de restricciones
 
-        for rest in diccionario_datos["rest"]: #Coloca los ceros y unos en las restricciones
+        for rest in diccionario_datos["rest"]: #Coloca los ceros en las restricciones
             tmp = rest.pop(-1)
             rest += [0] * diccionario_datos["num_rest"]
             rest += [tmp]
 
+        #Coloca los unos en las restricciones
         i = diccionario_datos["num_var"]
         for rest in diccionario_datos["rest"]:
             rest[i] = 1
@@ -346,12 +347,12 @@ def leer_archivo(nombre_archivo):
                     diccionario_datos["num_rest"] = int(lista_datos[3].replace("\n", ""))
                 
                 elif contador == 1:
-                    diccionario_datos["fun_ob"] = list(map(int, lista_datos))  
+                    diccionario_datos["fun_ob"] = list(map(float, lista_datos))
      
                 else:
                     diccionario_datos["simb_rest"].append(lista_datos[-2])
                     lista_datos.pop(-2)
-                    diccionario_datos["rest"] += [list(map(int, lista_datos))]
+                    diccionario_datos["rest"] += [list(map(float, lista_datos))]
                 
                 contador += 1
         archivo.close()
