@@ -1,6 +1,8 @@
 import sys 
 import os
 from iteration_utilities import duplicates
+from sympy import *
+from sympy.core.rules import Transform
 
 class Matriz:
 
@@ -21,8 +23,9 @@ class Matriz:
     nom_archivo = ""
     U = 0
     FEV = []
-    CONST_M = 1000
+    CONST_M = 0
     var_artificiales = []
+    is_max = True
 
     def __init__(self, dict_datos) -> None:
         self.definir_ecuaciones(dict_datos)
@@ -44,7 +47,10 @@ class Matriz:
         for fila in matriz:
             nueva_fila = []
             if i == 0:
-                nueva_fila.append("U")
+                if self.is_max:
+                    nueva_fila.append("U")
+                else:
+                    nueva_fila.append("-U")
                 nueva_fila += fila
                 nueva_matriz.append(nueva_fila)
                 i += 1
@@ -66,11 +72,11 @@ class Matriz:
             return
 
         diccionario_datos["fun_ob"] = [-x for x in diccionario_datos["fun_ob"]] #Se vuelven negativos todos los números
-        diccionario_datos["fun_ob"] += [0] * (diccionario_datos["num_rest"] + 1) #Agrega los ceros dependiendo de la cantidad de restricciones
+        diccionario_datos["fun_ob"] += [float(0)] * (diccionario_datos["num_rest"] + 1) #Agrega los ceros dependiendo de la cantidad de restricciones
 
         for rest in diccionario_datos["rest"]: #Coloca los ceros y unos en las restricciones
             tmp = rest.pop(-1)
-            rest += [0] * diccionario_datos["num_rest"]
+            rest += [float(0)] * diccionario_datos["num_rest"]
             rest += [tmp]
 
         i = diccionario_datos["num_var"]
@@ -81,6 +87,15 @@ class Matriz:
         var_basicas = [x for x in range(diccionario_datos["num_var"]+1, (len(diccionario_datos["fun_ob"])-1)+1)]
         self.crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, diccionario_datos["num_var"] + diccionario_datos["num_rest"])
 
+    def encontrar_entrante_granm(self, fila):
+        i = 0
+        for valor in fila:
+            if type(valor) != int and type(valor) != float:
+                fila[fila.index(valor)] = valor.subs({self.CONST_M:1000})
+        fila2 = sorted(fila)
+        idx = fila.index(fila2[0]) + 1
+        self.columna_pivote = (self.matriz[0][idx], idx)
+
     def encontrar_entrante(self):
         """ Encuentra cual es la columna con la variable entrante, esto viendo cual tiene el menor valor en U
             E: N/A
@@ -89,6 +104,9 @@ class Matriz:
         if self.soluciones_multiples: #Si es multiple no hace falta sacar columna entrante
             return 0
         fila = self.matriz[1][1:-1]
+        if self.CONST_M != 0:
+            self.encontrar_entrante_granm(fila)
+            return
         fila.sort()
         self.columna_pivote = (self.matriz[0][self.matriz[1].index(fila[0])], self.matriz[1].index(fila[0]))
 
@@ -201,7 +219,7 @@ class Matriz:
         self.pivote = self.matriz[self.fila_pivote[1]][self.columna_pivote[1]]
         i = 1
         while i < len(self.matriz):
-            self.matriz[i][self.columna_pivote[1]] = 0
+            self.matriz[i][self.columna_pivote[1]] = float(0)
             i += 1
 
         #Después se divide toda la linea entre el pivote
@@ -210,7 +228,7 @@ class Matriz:
         while i < len(self.matriz[0]):
             self.matriz[self.fila_pivote[1]][i] = self.matriz[self.fila_pivote[1]][i]/self.pivote
             i += 1
-        self.matriz[self.fila_pivote[1]][self.columna_pivote[1]] = 1
+        self.matriz[self.fila_pivote[1]][self.columna_pivote[1]] = float(1)
 
     def iteracion(self):
         """ Hace las operaciones en cada fila para convertir la columna pivote en ceros
@@ -223,7 +241,7 @@ class Matriz:
                 indice = 0
                 for num in fila[1:]:
                     if indice != self.columna_pivote[1] - 1 and indice <= len(self.matriz) + 1:
-                        self.matriz[num_fila][indice + 1] = float(num + self.columna_pivote[2][num_fila - 1] * self.matriz[self.fila_pivote[1]][indice + 1])
+                        self.matriz[num_fila][indice + 1] = num + self.columna_pivote[2][num_fila - 1] * self.matriz[self.fila_pivote[1]][indice + 1]
                     indice += 1                
             num_fila += 1
     
@@ -245,9 +263,12 @@ class Matriz:
             E: N/A
             S: N/A
         """
-        funcion_objetivo = self.matriz[1]
+        funcion_objetivo = self.matriz[1][1:]
+        for valor in funcion_objetivo:
+            if type(valor) != int and type(valor) != float:
+                funcion_objetivo[funcion_objetivo.index(valor)] = valor.subs({self.CONST_M:1000})
         #Primero revisa que no hayan negativos
-        for n in funcion_objetivo[1:]:
+        for n in funcion_objetivo[:-1]:
             if n < 0:
                 return False
 
@@ -255,13 +276,13 @@ class Matriz:
         if (not(self.soluciones_multiples)):
             self.encontrar_basicas()
             i = 1
-            while i < len(self.matriz[0])-1:
-                if funcion_objetivo[i] == 0:
+            while i < len(self.matriz[0])-2:
+                if funcion_objetivo[i-1] == 0:
                     if not(self.matriz[0][i] in self.variables_basicas):
                         self.soluciones_multiples = True
                         return False
                 i += 1
-            
+        
         return True
 
     def datos_solucion(self):
@@ -270,7 +291,10 @@ class Matriz:
             S: string con los datos de la solución
         """
         str_matriz = "FEV: " + str(self.FEV)
-        str_matriz += "\nU: " + str(self.U)
+        if self.is_max:
+            str_matriz += "\nU: " + str(self.U)
+        else:
+            str_matriz += "\nU: " + str(self.U*-1)
         str_matriz += "\nVariable básica entrante: " + self.columna_pivote[0]
         str_matriz += "\nVariable básica saliente: " + self.fila_pivote[0]
         str_matriz += "\nPivote: " + str(self.pivote)
@@ -288,7 +312,10 @@ class Matriz:
         while(fila < len(self.matriz)):
             columna = 1
             while(columna < len(self.matriz[0])):
-                matriz_redondeada[fila][columna] = round(self.matriz[fila][columna],2)
+                if type(self.matriz[fila][columna]) == float or type(self.matriz[fila][columna]) == int:
+                    matriz_redondeada[fila][columna] = round(self.matriz[fila][columna], 2)
+                else:
+                    matriz_redondeada[fila][columna] = self.matriz[fila][columna].xreplace(Transform(lambda x: x.round(2), lambda x: isinstance(x, Float)))
                 columna += 1
             fila += 1
         
@@ -307,7 +334,10 @@ class Matriz:
         """
         self.encontrar_FEV()
         datos = "FEV: " + str(self.FEV)
-        datos += "\nU: " + str(self.U)
+        if self.is_max:
+            datos += "\nU: " + str(self.U)
+        else:
+            datos += "\nU: " + str(self.U*-1)
         i = 1
         if self.degenerada:
             datos += "\n\nLas variables "
@@ -322,7 +352,8 @@ class Matriz:
         return datos
     
     def definir_ecuaciones_granm(self, diccionario_datos):
-
+        
+        self.CONST_M = Symbol('M')
         indice = 0
         diccionario_datos["fun_ob"] = [-x for x in diccionario_datos["fun_ob"]]
         var_basicas = []
@@ -330,11 +361,11 @@ class Matriz:
 
         while i < len(diccionario_datos["simb_rest"]):
             if diccionario_datos["simb_rest"][i] == "<=":
-                diccionario_datos["fun_ob"].append(0)
+                diccionario_datos["fun_ob"].append(float(0))
                 var_basicas.append(len(diccionario_datos["fun_ob"]))
 
             elif diccionario_datos["simb_rest"][i] == ">=":
-                diccionario_datos["fun_ob"].append(0)
+                diccionario_datos["fun_ob"].append(float(0))
                 diccionario_datos["num_rest"] += 1 
                 if diccionario_datos["optm"] == "max":
                     diccionario_datos["fun_ob"].append(self.CONST_M)
@@ -358,16 +389,17 @@ class Matriz:
                 self.var_artificiales.append(i)
             i += 1
         
-        diccionario_datos["fun_ob"].append(0)
+        diccionario_datos["fun_ob"].append(float(0))
 
         if diccionario_datos["optm"] == "min":
             diccionario_datos["fun_ob"] = [-x for x in diccionario_datos["fun_ob"]]
+            self.is_max = False
 
         
         for rest in diccionario_datos["rest"]: #Coloca los ceros en las restricciones
             tmp = rest.pop(-1)
-            rest += [0] * diccionario_datos["num_rest"]
-            rest += [tmp]
+            rest += [float(0)] * diccionario_datos["num_rest"]
+            rest += [float(tmp)]
         
         i = diccionario_datos["num_var"]
         for rest in diccionario_datos["rest"]:
@@ -382,9 +414,10 @@ class Matriz:
             j = 0
             while j < len(diccionario_datos["fun_ob"]):
                 diccionario_datos["fun_ob"][j] = diccionario_datos["fun_ob"][j] + (-self.CONST_M * diccionario_datos["rest"][i][j])
+                #print(diccionario_datos["fun_ob"][j])
                 j += 1
 
-        self.crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, len(diccionario_datos["fun_ob"])-1)      
+        self.crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, len(diccionario_datos["fun_ob"])-1)
 
 """Fuera de clase Matriz"""
 
