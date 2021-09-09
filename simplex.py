@@ -273,7 +273,7 @@ class Matriz:
 
         return str_matriz
 
-    def matriz_to_string(self):
+    def matriz_a_texto(self):
         """ Convierte la matriz en un string legible e imprimible
             E: N/A
             S: string de la matriz
@@ -450,7 +450,7 @@ def principal(args):
                 print(matriz.datos_sol_optima())
  
             escribir_archivo(args[2],"\nIteracion " + str(num_iteracion))
-            escribir_archivo(args[2],matriz.matriz_to_string())
+            escribir_archivo(args[2],matriz.matriz_a_texto())
             matriz.iterar()
             escribir_archivo(args[2],matriz.datos_solucion())
 
@@ -462,7 +462,7 @@ def principal(args):
                     print("\nIteracion extra")
                 else:
                     escribir_archivo(args[2],"\nIteracion Final")  
-                escribir_archivo(args[2], matriz.matriz_to_string())
+                escribir_archivo(args[2], matriz.matriz_a_texto())
                 print(matriz.datos_sol_optima())
                 escribir_archivo(args[2],matriz.datos_sol_optima())
                 break
@@ -485,7 +485,7 @@ def principal(args):
                     print(matriz.datos_sol_optima())
     
                 escribir_archivo(args[1],"\nIteracion " + str(num_iteracion))
-                escribir_archivo(args[1],matriz.matriz_to_string())
+                escribir_archivo(args[1],matriz.matriz_a_texto())
                 matriz.iterar()
                 escribir_archivo(args[1],matriz.datos_solucion())
 
@@ -497,7 +497,7 @@ def principal(args):
                         print("\nIteracion extra")
                     else:
                         escribir_archivo(args[1],"\nIteracion Final")  
-                    escribir_archivo(args[1], matriz.matriz_to_string())
+                    escribir_archivo(args[1], matriz.matriz_a_texto())
                     print(matriz.datos_sol_optima())
                     escribir_archivo(args[1],matriz.datos_sol_optima())
                     break
