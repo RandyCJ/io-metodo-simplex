@@ -1,5 +1,6 @@
 import sys 
 import os
+import sympy
 from iteration_utilities import duplicates
 from sympy import *
 from sympy.core.rules import Transform
@@ -72,11 +73,11 @@ class Matriz:
             return
 
         diccionario_datos["fun_ob"] = [-x for x in diccionario_datos["fun_ob"]] #Se vuelven negativos todos los números
-        diccionario_datos["fun_ob"] += [float(0)] * (diccionario_datos["num_rest"] + 1) #Agrega los ceros dependiendo de la cantidad de restricciones
+        diccionario_datos["fun_ob"] += [Rational(0)] * (diccionario_datos["num_rest"] + 1) #Agrega los ceros dependiendo de la cantidad de restricciones
 
         for rest in diccionario_datos["rest"]: #Coloca los ceros y unos en las restricciones
             tmp = rest.pop(-1)
-            rest += [float(0)] * diccionario_datos["num_rest"]
+            rest += [Rational(0)] * diccionario_datos["num_rest"]
             rest += [tmp]
 
         i = diccionario_datos["num_var"]
@@ -219,7 +220,7 @@ class Matriz:
         self.pivote = self.matriz[self.fila_pivote[1]][self.columna_pivote[1]]
         i = 1
         while i < len(self.matriz):
-            self.matriz[i][self.columna_pivote[1]] = float(0)
+            self.matriz[i][self.columna_pivote[1]] = Rational(0)
             i += 1
 
         #Después se divide toda la linea entre el pivote
@@ -228,7 +229,7 @@ class Matriz:
         while i < len(self.matriz[0]):
             self.matriz[self.fila_pivote[1]][i] = self.matriz[self.fila_pivote[1]][i]/self.pivote
             i += 1
-        self.matriz[self.fila_pivote[1]][self.columna_pivote[1]] = float(1)
+        self.matriz[self.fila_pivote[1]][self.columna_pivote[1]] = Rational(1)
 
     def iteracion(self):
         """ Hace las operaciones en cada fila para convertir la columna pivote en ceros
@@ -277,7 +278,7 @@ class Matriz:
             self.encontrar_basicas()
             i = 1
             while i < len(self.matriz[0])-2:
-                if funcion_objetivo[i-1] == 0:
+                if funcion_objetivo[i-1] == 0 or type(funcion_objetivo[i-1]) == sympy.core.numbers.Zero: #Por aqui hay algo raro
                     if not(self.matriz[0][i] in self.variables_basicas):
                         self.soluciones_multiples = True
                         return False
@@ -301,27 +302,29 @@ class Matriz:
 
         return str_matriz
 
-    def matriz_to_string(self):
+    def matriz_a_texto(self):
         """ Convierte la matriz en un string legible e imprimible
             E: N/A
             S: string de la matriz
         """
+
         matriz_redondeada = self.matriz
         fila = 1
         columna = 1
         while(fila < len(self.matriz)):
             columna = 1
             while(columna < len(self.matriz[0])):
-                if type(self.matriz[fila][columna]) == float or type(self.matriz[fila][columna]) == int:
-                    matriz_redondeada[fila][columna] = round(self.matriz[fila][columna], 2)
+                if isinstance(self.matriz[fila][columna], sympy.Basic):
+                    matriz_redondeada[fila][columna] = self.matriz[fila][columna]#.evalf(3)
                 else:
-                    matriz_redondeada[fila][columna] = self.matriz[fila][columna].xreplace(Transform(lambda x: x.round(2), lambda x: isinstance(x, Float)))
+                    matriz_redondeada[fila][columna] = round(self.matriz[fila][columna], 2)
+                    #matriz_redondeada[fila][columna] = self.matriz[fila][columna].xreplace(Transform(lambda x: x.round(2), lambda x: isinstance(x, Float)))
                 columna += 1
             fila += 1
         
         linea_string = [[str(casilla) for casilla in linea ] for linea in matriz_redondeada]
         lista_posicion = [max(map(len, columna)) for columna in zip(*linea_string)]
-        cambia_formato = '\t'.join('{{:{}}}'.format(x) for x in lista_posicion)
+        cambia_formato = '\t\t'.join('{{:{}}}'.format(x) for x in lista_posicion)
         tabla = [cambia_formato.format(*linea) for linea in linea_string]
 
         return "\n".join(tabla)
@@ -347,7 +350,7 @@ class Matriz:
                 else:
                     datos += self.var_degeneradas[i] + ", "
                 i += 1
-            datos += " son degeneradas, su resultado en común es " + str(round(self.var_degeneradas[0],2))
+            datos += " son degeneradas, su resultado en común es " + str(round(self.var_degeneradas[0], 2))
             datos += "\npor lo tanto, la solución es degenerada"
         return datos
     
@@ -361,11 +364,11 @@ class Matriz:
 
         while i < len(diccionario_datos["simb_rest"]):
             if diccionario_datos["simb_rest"][i] == "<=":
-                diccionario_datos["fun_ob"].append(float(0))
+                diccionario_datos["fun_ob"].append(Rational(0))
                 var_basicas.append(len(diccionario_datos["fun_ob"]))
 
             elif diccionario_datos["simb_rest"][i] == ">=":
-                diccionario_datos["fun_ob"].append(float(0))
+                diccionario_datos["fun_ob"].append(Rational(0))
                 diccionario_datos["num_rest"] += 1 
                 if diccionario_datos["optm"] == "max":
                     diccionario_datos["fun_ob"].append(self.CONST_M)
@@ -389,7 +392,7 @@ class Matriz:
                 self.var_artificiales.append(i)
             i += 1
         
-        diccionario_datos["fun_ob"].append(float(0))
+        diccionario_datos["fun_ob"].append(Rational(0))
 
         if diccionario_datos["optm"] == "min":
             diccionario_datos["fun_ob"] = [-x for x in diccionario_datos["fun_ob"]]
@@ -398,8 +401,8 @@ class Matriz:
         
         for rest in diccionario_datos["rest"]: #Coloca los ceros en las restricciones
             tmp = rest.pop(-1)
-            rest += [float(0)] * diccionario_datos["num_rest"]
-            rest += [float(tmp)]
+            rest += [Rational(0)] * diccionario_datos["num_rest"]
+            rest += [Rational(tmp)]
         
         i = diccionario_datos["num_var"]
         for rest in diccionario_datos["rest"]:
@@ -449,12 +452,12 @@ def leer_archivo(nombre_archivo):
                     diccionario_datos["num_rest"] = int(lista_datos[3].replace("\n", ""))
                 
                 elif contador == 1:
-                    diccionario_datos["fun_ob"] = list(map(float, lista_datos))  
+                    diccionario_datos["fun_ob"] = list(map(Rational, lista_datos))  
      
                 else:
                     diccionario_datos["simb_rest"].append(lista_datos[-2])
                     lista_datos.pop(-2)
-                    diccionario_datos["rest"] += [list(map(float, lista_datos))]
+                    diccionario_datos["rest"] += [list(map(Rational, lista_datos))]
                 
                 contador += 1
         archivo.close()
@@ -551,7 +554,7 @@ def principal(args):
                 print(matriz.datos_sol_optima())
  
             escribir_archivo(args[2],"\nIteracion " + str(num_iteracion))
-            escribir_archivo(args[2],matriz.matriz_to_string())
+            escribir_archivo(args[2],matriz.matriz_a_texto())
             matriz.iterar()
             escribir_archivo(args[2],matriz.datos_solucion())
 
@@ -563,7 +566,7 @@ def principal(args):
                     print("\nIteracion extra")
                 else:
                     escribir_archivo(args[2],"\nIteracion Final")  
-                escribir_archivo(args[2], matriz.matriz_to_string())
+                escribir_archivo(args[2], matriz.matriz_a_texto())
                 print(matriz.datos_sol_optima())
                 escribir_archivo(args[2],matriz.datos_sol_optima())
                 break
@@ -586,7 +589,7 @@ def principal(args):
                     print(matriz.datos_sol_optima())
     
                 escribir_archivo(args[1],"\nIteracion " + str(num_iteracion))
-                escribir_archivo(args[1],matriz.matriz_to_string())
+                escribir_archivo(args[1],matriz.matriz_a_texto())
                 matriz.iterar()
                 escribir_archivo(args[1],matriz.datos_solucion())
 
@@ -598,7 +601,7 @@ def principal(args):
                         print("\nIteracion extra")
                     else:
                         escribir_archivo(args[1],"\nIteracion Final")  
-                    escribir_archivo(args[1], matriz.matriz_to_string())
+                    escribir_archivo(args[1], matriz.matriz_a_texto())
                     print(matriz.datos_sol_optima())
                     escribir_archivo(args[1],matriz.datos_sol_optima())
                     break
