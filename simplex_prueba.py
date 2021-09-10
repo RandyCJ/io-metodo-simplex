@@ -266,7 +266,7 @@ class Matriz:
         """
         funcion_objetivo = self.matriz[1][1:]
         for valor in funcion_objetivo:
-            if type(valor) != int and type(valor) != float:
+            if type(valor) != int and type(valor) != float and valor != 0:
                 funcion_objetivo[funcion_objetivo.index(valor)] = valor.subs({self.CONST_M:1000})
         #Primero revisa que no hayan negativos
         for n in funcion_objetivo[:-1]:
@@ -278,7 +278,7 @@ class Matriz:
             self.encontrar_basicas()
             i = 1
             while i < len(self.matriz[0])-2:
-                if funcion_objetivo[i-1] == 0 or type(funcion_objetivo[i-1]) == sympy.core.numbers.Zero: #Por aqui hay algo raro
+                if funcion_objetivo[i-1] == 0 or type(funcion_objetivo[i-1]) == sympy.core.numbers.Zero:
                     if not(self.matriz[0][i] in self.variables_basicas):
                         self.soluciones_multiples = True
                         return False
@@ -314,11 +314,7 @@ class Matriz:
         while(fila < len(self.matriz)):
             columna = 1
             while(columna < len(self.matriz[0])):
-                if isinstance(self.matriz[fila][columna], sympy.Basic):
-                    matriz_redondeada[fila][columna] = self.matriz[fila][columna]#.evalf(3)
-                else:
-                    matriz_redondeada[fila][columna] = round(self.matriz[fila][columna], 2)
-                    #matriz_redondeada[fila][columna] = self.matriz[fila][columna].xreplace(Transform(lambda x: x.round(2), lambda x: isinstance(x, Float)))
+                matriz_redondeada[fila][columna] = self.matriz[fila][columna]#.evalf(3)
                 columna += 1
             fila += 1
         
@@ -532,81 +528,56 @@ def limpiar_archivo_solucion(nombre_archivo):
     except:
         print("\nNo se pudo crear o abrir el archivo\n")
 
+def obtener_solucion(nombre_archivo):
+    num_iteracion = 0
+    diccionario_datos = leer_archivo(nombre_archivo)
+    matriz = Matriz(diccionario_datos)
+    limpiar_archivo_solucion(nombre_archivo)
+    matriz.nom_archivo = nombre_archivo
+    
+    while(True):
+        
+        if matriz.soluciones_multiples:
+            print(matriz.datos_sol_optima())
+
+        escribir_archivo(nombre_archivo,"\nIteracion " + str(num_iteracion))
+        escribir_archivo(nombre_archivo,matriz.matriz_a_texto())
+        matriz.iterar()
+        escribir_archivo(nombre_archivo,matriz.datos_solucion())
+
+        if (matriz.verificar_optimalidad()):
+            if matriz.soluciones_multiples:
+                escribir_archivo(nombre_archivo, "Solución múltiple en: " + matriz.columna_pivote[0])
+                print ("Solución múltiple en: " + matriz.columna_pivote[0])
+                escribir_archivo(nombre_archivo,"\nIteracion extra")
+                print("\nIteracion extra")
+            else:
+                escribir_archivo(nombre_archivo,"\nIteracion Final")  
+            escribir_archivo(nombre_archivo, matriz.matriz_a_texto())
+            print(matriz.datos_sol_optima())
+            escribir_archivo(nombre_archivo,matriz.datos_sol_optima())
+            break
+
+        num_iteracion += 1
+
+
 def principal(args):
     """ Función encargada de la ejecución del programa
             E: recibe los argumento ingresados por consola
             S: N/A
     """
-    
-    diccionario_datos = {}
-    num_iteracion = 0
 
     if len(args) == 3 and args[1] == "-h":
         imprimir_ayuda()
-        diccionario_datos = leer_archivo(args[2])
-        matriz = Matriz(diccionario_datos)
-        limpiar_archivo_solucion(args[2])
-        matriz.nom_archivo = args[2]
-       
-        while(True):
-            
-            if matriz.soluciones_multiples:
-                print(matriz.datos_sol_optima())
- 
-            escribir_archivo(args[2],"\nIteracion " + str(num_iteracion))
-            escribir_archivo(args[2],matriz.matriz_a_texto())
-            matriz.iterar()
-            escribir_archivo(args[2],matriz.datos_solucion())
+        obtener_solucion(args[2])
 
-            if (matriz.verificar_optimalidad()):
-                if matriz.soluciones_multiples:
-                    escribir_archivo(args[2], "Solución múltiple en: " + matriz.columna_pivote[0])
-                    print ("Solución múltiple en: " + matriz.columna_pivote[0])
-                    escribir_archivo(args[2],"\nIteracion extra")
-                    print("\nIteracion extra")
-                else:
-                    escribir_archivo(args[2],"\nIteracion Final")  
-                escribir_archivo(args[2], matriz.matriz_a_texto())
-                print(matriz.datos_sol_optima())
-                escribir_archivo(args[2],matriz.datos_sol_optima())
-                break
-
-            num_iteracion += 1
     elif len(args) == 2:
 
         if args[1] == "-h":
             imprimir_ayuda()
         
         else:
-            diccionario_datos = leer_archivo(args[1])
-            matriz = Matriz(diccionario_datos)
-            limpiar_archivo_solucion(args[1])
-            matriz.nom_archivo = args[1]
-        
-            while(True):
-                
-                if matriz.soluciones_multiples:
-                    print(matriz.datos_sol_optima())
-    
-                escribir_archivo(args[1],"\nIteracion " + str(num_iteracion))
-                escribir_archivo(args[1],matriz.matriz_a_texto())
-                matriz.iterar()
-                escribir_archivo(args[1],matriz.datos_solucion())
-
-                if (matriz.verificar_optimalidad()):
-                    if matriz.soluciones_multiples:
-                        escribir_archivo(args[1], "Solución múltiple en: " + matriz.columna_pivote[0])
-                        print ("Solución múltiple en: " + matriz.columna_pivote[0])
-                        escribir_archivo(args[1],"\nIteracion extra")
-                        print("\nIteracion extra")
-                    else:
-                        escribir_archivo(args[1],"\nIteracion Final")  
-                    escribir_archivo(args[1], matriz.matriz_a_texto())
-                    print(matriz.datos_sol_optima())
-                    escribir_archivo(args[1],matriz.datos_sol_optima())
-                    break
-
-                num_iteracion += 1
+            obtener_solucion(args[1])
     else:
         print("\nIngrese [-h] para recibir ayuda de utilización del programa\n")
         return

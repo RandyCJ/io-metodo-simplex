@@ -1,0 +1,45 @@
+
+Iteracion 0
+VB		X1           		X2          		X3		X4		X5		X6		LD   
+-U		2/5 - 11*M/10		1/2 - 9*M/10		0 		0 		M 		0 		-12*M
+X3		3/10         		1/10        		1 		0 		0 		0 		27/10
+X4		1/2          		1/2         		0 		1 		0 		0 		6    
+X6		3/5          		2/5         		0 		0 		-1		1 		6    
+FEV: [0, 0, 27/10, 6, 0, 6]
+U: 12*M
+Variable básica entrante: X1
+Variable básica saliente: X3
+Pivote: 3/10
+
+Iteracion 1
+VB		X1		X2            		X3          		X4		X5		X6		LD             
+-U		0 		11/30 - 8*M/15		11*M/3 - 4/3		0 		M 		0 		-21*M/10 - 18/5
+X1		1 		1/3           		10/3        		0 		0 		0 		9              
+X4		0 		1/3           		-5/3        		1 		0 		0 		3/2            
+X6		0 		1/5           		-2          		0 		-1		1 		3/5            
+FEV: [9, 0, 0, 3/2, 0, 3/5]
+U: 21*M/10 + 18/5
+Variable básica entrante: X2
+Variable básica saliente: X6
+Pivote: 1/5
+
+Iteracion 2
+VB		X1		X2		X3         		X4		X5          		X6          		LD          
+-U		0 		0 		7/3 - 5*M/3		0 		11/6 - 5*M/3		8*M/3 - 11/6		-M/2 - 47/10
+X1		1 		0 		20/3       		0 		5/3         		-5/3        		8           
+X4		0 		0 		5/3        		1 		5/3         		-5/3        		1/2         
+X2		0 		1 		-10        		0 		-5          		5           		3           
+FEV: [8, 3, 0, 1/2, 0, 0]
+U: M/2 + 47/10
+Variable básica entrante: X5
+Variable básica saliente: X4
+Pivote: 5/3
+
+Iteracion Final
+VB		X1		X2		X3 		X4       		X5		X6		LD   
+-U		0 		0 		1/2		M - 11/10		0 		M 		-21/4
+X1		1 		0 		5  		-1       		0 		0 		15/2 
+X5		0 		0 		1  		3/5      		1 		-1		3/10 
+X2		0 		1 		-5 		3        		0 		0 		9/2  
+FEV: [15/2, 9/2, 0, 0, 3/10, 0]
+U: 21/4
