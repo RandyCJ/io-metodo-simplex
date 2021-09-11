@@ -78,24 +78,15 @@ class Matriz:
         for rest in diccionario_datos["rest"]: #Coloca los ceros y unos en las restricciones
             tmp = rest.pop(-1)
             rest += [Rational(0)] * diccionario_datos["num_rest"]
-            rest += [tmp]
+            rest += [Rational(tmp)]
 
         i = diccionario_datos["num_var"]
         for rest in diccionario_datos["rest"]:
             rest[i] = 1
             i += 1
 
-        var_basicas = [x for x in range(diccionario_datos["num_var"]+1, (len(diccionario_datos["fun_ob"])-1)+1)]
+        var_basicas = [x for x in range(diccionario_datos["num_var"]+1, len(diccionario_datos["fun_ob"]))]
         self.crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, diccionario_datos["num_var"] + diccionario_datos["num_rest"])
-
-    def encontrar_entrante_granm(self, fila):
-        i = 0
-        for valor in fila:
-            if type(valor) != int and type(valor) != float:
-                fila[fila.index(valor)] = valor.subs({self.CONST_M:1000})
-        fila2 = sorted(fila)
-        idx = fila.index(fila2[0]) + 1
-        self.columna_pivote = (self.matriz[0][idx], idx)
 
     def encontrar_entrante(self):
         """ Encuentra cual es la columna con la variable entrante, esto viendo cual tiene el menor valor en U
@@ -104,12 +95,15 @@ class Matriz:
         """
         if self.soluciones_multiples: #Si es multiple no hace falta sacar columna entrante
             return 0
+        
         fila = self.matriz[1][1:-1]
-        if self.CONST_M != 0:
-            self.encontrar_entrante_granm(fila)
-            return
-        fila.sort()
-        self.columna_pivote = (self.matriz[0][self.matriz[1].index(fila[0])], self.matriz[1].index(fila[0]))
+        for valor in fila:
+            if isinstance(valor, sympy.Basic):
+                fila[fila.index(valor)] = valor.subs({self.CONST_M:1000})
+    
+        tmp = sorted(fila)
+        idx = fila.index(tmp[0]) + 1
+        self.columna_pivote = (self.matriz[0][idx], idx)
 
     def encontrar_saliente(self):
         """ Encuentra cual es la columna con la variable entrante, esto calculando el pivote
@@ -266,7 +260,7 @@ class Matriz:
         """
         funcion_objetivo = self.matriz[1][1:]
         for valor in funcion_objetivo:
-            if type(valor) != int and type(valor) != float and valor != 0:
+            if isinstance(valor, sympy.Basic) and valor != 0:
                 funcion_objetivo[funcion_objetivo.index(valor)] = valor.subs({self.CONST_M:1000})
         #Primero revisa que no hayan negativos
         for n in funcion_objetivo[:-1]:
@@ -278,7 +272,7 @@ class Matriz:
             self.encontrar_basicas()
             i = 1
             while i < len(self.matriz[0])-2:
-                if funcion_objetivo[i-1] == 0 or type(funcion_objetivo[i-1]) == sympy.core.numbers.Zero:
+                if funcion_objetivo[i-1] == 0:
                     if not(self.matriz[0][i] in self.variables_basicas):
                         self.soluciones_multiples = True
                         return False
@@ -413,7 +407,6 @@ class Matriz:
             j = 0
             while j < len(diccionario_datos["fun_ob"]):
                 diccionario_datos["fun_ob"][j] = diccionario_datos["fun_ob"][j] + (-self.CONST_M * diccionario_datos["rest"][i][j])
-                #print(diccionario_datos["fun_ob"][j])
                 j += 1
 
         self.crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, len(diccionario_datos["fun_ob"])-1)
