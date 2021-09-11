@@ -235,7 +235,7 @@ class Matriz:
             if num_fila != self.fila_pivote[1] and num_fila != 0 :
                 indice = 0
                 for num in fila[1:]:
-                    if indice != self.columna_pivote[1] - 1 and indice <= len(self.matriz) + 1:
+                    if indice != self.columna_pivote[1] - 1 and indice <= len(self.matriz[0]) + 1:
                         self.matriz[num_fila][indice + 1] = num + self.columna_pivote[2][num_fila - 1] * self.matriz[self.fila_pivote[1]][indice + 1]
                     indice += 1                
             num_fila += 1
@@ -395,12 +395,15 @@ class Matriz:
             rest += [Rational(tmp)]
         
         i = diccionario_datos["num_var"]
+        j = 0
         for rest in diccionario_datos["rest"]:
-            if diccionario_datos["simb_rest"][i-2] == ">=":
+            if diccionario_datos["simb_rest"][j] == ">=":
                 rest[i] = -1
                 rest[i+1] = 1
+                i += 1
             else:
                 rest[i] = 1
+            j += 1
             i += 1
         
         for i in self.var_artificiales:
