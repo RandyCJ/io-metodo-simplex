@@ -147,11 +147,14 @@ class Matriz:
         if lista_divisiones[0][0] in list(duplicates(lista_degenerados)): #Revisamos que no hayan divisiones iguales que serían degeneradas
             self.degenerada = True
             i = 0
-            self.var_degeneradas = [lista_divisiones[0][0]]
+            self.var_degeneradas += [lista_divisiones[0][0]]
             while i < len(lista_divisiones):
                 if lista_divisiones[i][0] == lista_divisiones[0][0]:
                     self.var_degeneradas += [lista_divisiones[i][1]]
                 i += 1
+        if self.degenerada and self.var_degeneradas != []:
+            print(self.degeneradas_a_texto())
+
     
     def encontrar_basicas(self):
         """ Guarda las variables básicas en la columna 0 de cada fila
@@ -331,19 +334,22 @@ class Matriz:
             datos += "\nU: " + str(self.U)
         else:
             datos += "\nU: " + str(self.U*-1)
-        i = 1
         if self.degenerada:
-            datos += "\n\nLas variables "
-            while i < len(self.var_degeneradas):
-                if i == len(self.var_degeneradas)-1:
-                    datos += self.var_degeneradas[i]
-                else:
-                    datos += self.var_degeneradas[i] + ", "
-                i += 1
-            datos += " son degeneradas, su resultado en común es " + str(round(self.var_degeneradas[0], 2))
-            datos += "\npor lo tanto, la solución es degenerada"
+            datos += "\nLa solución es degenerada"
         return datos
-    
+
+    def degeneradas_a_texto(self):
+        i = 1
+        datos = "Las variables "
+        while i < len(self.var_degeneradas):
+            if i == len(self.var_degeneradas)-1:
+                datos += self.var_degeneradas[i]
+            else:
+                datos += self.var_degeneradas[i] + ", "
+            i += 1
+        datos += " son degeneradas, su resultado en común es " + str(round(self.var_degeneradas[0], 2))
+        return datos
+
     def definir_ecuaciones_granm(self, diccionario_datos):
         
         self.CONST_M = Symbol('M')
