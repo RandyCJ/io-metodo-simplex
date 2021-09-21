@@ -24,6 +24,7 @@ class Matriz:
     nom_archivo = ""
     U = 0
     FEV = []
+    dual = False
     CONST_M = 0
     var_artificiales = []
     is_max = True
@@ -68,9 +69,13 @@ class Matriz:
             E: Recibe el diccionario de datos con los datos que se recolectaron al leer el archivo
             S: N/A
         """
-        if diccionario_datos["metodo"] == 1:
+        if diccionario_datos["metodo"] == 1:     #granm
             self.definir_ecuaciones_granm(diccionario_datos)
             return
+        elif diccionario_datos["metodo"] == 3:   #dual
+            self.dual = True
+            diccionario_datos = self.acomodar_diccionario(diccionario_datos)
+            print(diccionario_datos)
 
         diccionario_datos["fun_ob"] = [-x for x in diccionario_datos["fun_ob"]] #Se vuelven negativos todos los números
         diccionario_datos["fun_ob"] += [Rational(0)] * (diccionario_datos["num_rest"] + 1) #Agrega los ceros dependiendo de la cantidad de restricciones
@@ -420,6 +425,51 @@ class Matriz:
 
         self.crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, len(diccionario_datos["fun_ob"])-1)
 
+    def acomodar_diccionario(self, diccionario_datos):
+        nueva_fun_ob = []
+        nueva_simb_rest = []
+
+        for fila in diccionario_datos["rest"]:
+            nueva_fun_ob += [fila[-1]]
+
+        nuevas_rest = []
+        for fila in diccionario_datos["rest"]:
+            nuevas_rest += [fila[:-1]]
+        nuevas_rest = transpuesta(nuevas_rest)
+
+        i = 0
+        while i < len(nuevas_rest):
+            nuevas_rest[i] += [diccionario_datos["fun_ob"][i]]
+            i += 1
+
+        if diccionario_datos["optm"] == "max":
+            nueva_optm = "min"
+            simbolo_restricciones = ">="
+            nuevo_metodo = 1        #gran m
+        else:
+            nueva_optm = "max"
+            simbolo_restricciones = "<="
+            nuevo_metodo = 0        #simplex normal
+
+        nuevo_num_var = diccionario_datos["num_rest"]
+
+        nuevo_num_rest = diccionario_datos["num_var"]
+
+        for i in nuevas_rest:
+            nueva_simb_rest.append(simbolo_restricciones)
+        
+        #Guardamos los nuevos valores en el diccionario
+        diccionario_datos["metodo"] = nuevo_metodo
+        diccionario_datos["optm"] = nueva_optm
+        diccionario_datos["num_var"] = nuevo_num_var
+        diccionario_datos["num_rest"] = nuevo_num_rest
+        diccionario_datos["fun_ob"] = nueva_fun_ob
+        diccionario_datos["rest"] = nuevas_rest
+        diccionario_datos["simb_rest"] = nueva_simb_rest
+    
+        return diccionario_datos
+
+
 """Fuera de clase Matriz"""
 
 def leer_archivo(nombre_archivo):
@@ -562,6 +612,15 @@ def obtener_solucion(nombre_archivo):
 
         num_iteracion += 1
 
+def transpuesta(matriz):
+    matriz_transpuesta = []
+
+    for j in range(len(matriz[0])):
+        matriz_transpuesta.append([])
+        for i in range(len(matriz)):
+            matriz_transpuesta[j].append(matriz[i][j])
+
+    return matriz_transpuesta
 
 def principal(args):
     """ Función encargada de la ejecución del programa
