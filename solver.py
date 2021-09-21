@@ -1,6 +1,9 @@
 import sys 
 import os
+import sympy
 from iteration_utilities import duplicates
+from sympy import *
+from sympy.core.rules import Transform
 
 class Matriz:
 
@@ -21,6 +24,10 @@ class Matriz:
     nom_archivo = ""
     U = 0
     FEV = []
+    dual = False
+    CONST_M = 0
+    var_artificiales = []
+    is_max = True
 
     def __init__(self, dict_datos) -> None:
         self.definir_ecuaciones(dict_datos)
@@ -42,7 +49,10 @@ class Matriz:
         for fila in matriz:
             nueva_fila = []
             if i == 0:
-                nueva_fila.append("U")
+                if self.is_max:
+                    nueva_fila.append("U")
+                else:
+                    nueva_fila.append("-U")
                 nueva_fila += fila
                 nueva_matriz.append(nueva_fila)
                 i += 1
@@ -59,22 +69,27 @@ class Matriz:
             E: Recibe el diccionario de datos con los datos que se recolectaron al leer el archivo
             S: N/A
         """
+        if diccionario_datos["metodo"] == 1:     #granm
+            self.definir_ecuaciones_granm(diccionario_datos)
+            return
+        elif diccionario_datos["metodo"] == 3:   #dual
+            self.dual = True
+            diccionario_datos = self.acomodar_diccionario(diccionario_datos)
 
         diccionario_datos["fun_ob"] = [-x for x in diccionario_datos["fun_ob"]] #Se vuelven negativos todos los números
-        diccionario_datos["fun_ob"] += [0] * (diccionario_datos["num_rest"] + 1) #Agrega los ceros dependiendo de la cantidad de restricciones
+        diccionario_datos["fun_ob"] += [Rational(0)] * (diccionario_datos["num_rest"] + 1) #Agrega los ceros dependiendo de la cantidad de restricciones
 
-        for rest in diccionario_datos["rest"]: #Coloca los ceros en las restricciones
+        for rest in diccionario_datos["rest"]: #Coloca los ceros y unos en las restricciones
             tmp = rest.pop(-1)
-            rest += [0] * diccionario_datos["num_rest"]
-            rest += [tmp]
+            rest += [Rational(0)] * diccionario_datos["num_rest"]
+            rest += [Rational(tmp)]
 
-        #Coloca los unos en las restricciones
         i = diccionario_datos["num_var"]
         for rest in diccionario_datos["rest"]:
             rest[i] = 1
             i += 1
 
-        var_basicas = [x for x in range(diccionario_datos["num_var"]+1, (len(diccionario_datos["fun_ob"])-1)+1)]
+        var_basicas = [x for x in range(diccionario_datos["num_var"]+1, len(diccionario_datos["fun_ob"]))]
         self.crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, diccionario_datos["num_var"] + diccionario_datos["num_rest"])
 
     def encontrar_entrante(self):
@@ -84,9 +99,15 @@ class Matriz:
         """
         if self.soluciones_multiples: #Si es multiple no hace falta sacar columna entrante
             return 0
-        fila = self.matriz[1][1:]
-        fila.sort()
-        self.columna_pivote = (self.matriz[0][self.matriz[1].index(fila[0])], self.matriz[1].index(fila[0]))
+        
+        fila = self.matriz[1][1:-1]
+        for valor in fila:
+            if isinstance(valor, sympy.Basic):
+                fila[fila.index(valor)] = valor.subs({self.CONST_M:1000})
+    
+        tmp = sorted(fila)
+        idx = fila.index(tmp[0]) + 1
+        self.columna_pivote = (self.matriz[0][idx], idx)
 
     def encontrar_saliente(self):
         """ Encuentra cual es la columna con la variable entrante, esto calculando el pivote
@@ -130,11 +151,14 @@ class Matriz:
         if lista_divisiones[0][0] in list(duplicates(lista_degenerados)): #Revisamos que no hayan divisiones iguales que serían degeneradas
             self.degenerada = True
             i = 0
-            self.var_degeneradas = [lista_divisiones[0][0]]
+            self.var_degeneradas += [lista_divisiones[0][0]]
             while i < len(lista_divisiones):
                 if lista_divisiones[i][0] == lista_divisiones[0][0]:
                     self.var_degeneradas += [lista_divisiones[i][1]]
                 i += 1
+        if self.degenerada and self.var_degeneradas != []:
+            print(self.degeneradas_a_texto())
+
     
     def encontrar_basicas(self):
         """ Guarda las variables básicas en la columna 0 de cada fila
@@ -197,7 +221,7 @@ class Matriz:
         self.pivote = self.matriz[self.fila_pivote[1]][self.columna_pivote[1]]
         i = 1
         while i < len(self.matriz):
-            self.matriz[i][self.columna_pivote[1]] = 0
+            self.matriz[i][self.columna_pivote[1]] = Rational(0)
             i += 1
 
         #Después se divide toda la linea entre el pivote
@@ -206,7 +230,7 @@ class Matriz:
         while i < len(self.matriz[0]):
             self.matriz[self.fila_pivote[1]][i] = self.matriz[self.fila_pivote[1]][i]/self.pivote
             i += 1
-        self.matriz[self.fila_pivote[1]][self.columna_pivote[1]] = 1
+        self.matriz[self.fila_pivote[1]][self.columna_pivote[1]] = Rational(1)
 
     def iteracion(self):
         """ Hace las operaciones en cada fila para convertir la columna pivote en ceros
@@ -218,8 +242,8 @@ class Matriz:
             if num_fila != self.fila_pivote[1] and num_fila != 0 :
                 indice = 0
                 for num in fila[1:]:
-                    if indice != self.columna_pivote[1] - 1 and indice <= len(self.matriz) + 1:
-                        self.matriz[num_fila][indice + 1] = float(num + self.columna_pivote[2][num_fila - 1] * self.matriz[self.fila_pivote[1]][indice + 1])
+                    if indice != self.columna_pivote[1] - 1 and indice <= len(self.matriz[0]) + 1:
+                        self.matriz[num_fila][indice + 1] = num + self.columna_pivote[2][num_fila - 1] * self.matriz[self.fila_pivote[1]][indice + 1]
                     indice += 1                
             num_fila += 1
     
@@ -241,9 +265,12 @@ class Matriz:
             E: N/A
             S: N/A
         """
-        funcion_objetivo = self.matriz[1]
+        funcion_objetivo = self.matriz[1][1:]
+        for valor in funcion_objetivo:
+            if isinstance(valor, sympy.Basic) and valor != 0:
+                funcion_objetivo[funcion_objetivo.index(valor)] = valor.subs({self.CONST_M:1000})
         #Primero revisa que no hayan negativos
-        for n in funcion_objetivo[1:]:
+        for n in funcion_objetivo[:-1]:
             if n < 0:
                 return False
 
@@ -251,13 +278,13 @@ class Matriz:
         if (not(self.soluciones_multiples)):
             self.encontrar_basicas()
             i = 1
-            while i < len(self.matriz[0])-1:
-                if funcion_objetivo[i] == 0:
+            while i < len(self.matriz[0])-2:
+                if funcion_objetivo[i-1] == 0:
                     if not(self.matriz[0][i] in self.variables_basicas):
                         self.soluciones_multiples = True
                         return False
                 i += 1
-            
+        
         return True
 
     def datos_solucion(self):
@@ -266,7 +293,10 @@ class Matriz:
             S: string con los datos de la solución
         """
         str_matriz = "FEV: " + str(self.FEV)
-        str_matriz += "\nU: " + str(self.U)
+        if self.is_max:
+            str_matriz += "\nU: " + str(self.U)
+        else:
+            str_matriz += "\nU: " + str(self.U*-1)
         str_matriz += "\nVariable básica entrante: " + self.columna_pivote[0]
         str_matriz += "\nVariable básica saliente: " + self.fila_pivote[0]
         str_matriz += "\nPivote: " + str(self.pivote)
@@ -278,19 +308,20 @@ class Matriz:
             E: N/A
             S: string de la matriz
         """
+
         matriz_redondeada = self.matriz
         fila = 1
         columna = 1
         while(fila < len(self.matriz)):
             columna = 1
             while(columna < len(self.matriz[0])):
-                matriz_redondeada[fila][columna] = round(self.matriz[fila][columna],2)
+                matriz_redondeada[fila][columna] = self.matriz[fila][columna]#.evalf(3)
                 columna += 1
             fila += 1
         
         linea_string = [[str(casilla) for casilla in linea ] for linea in matriz_redondeada]
         lista_posicion = [max(map(len, columna)) for columna in zip(*linea_string)]
-        cambia_formato = '\t'.join('{{:{}}}'.format(x) for x in lista_posicion)
+        cambia_formato = '\t\t'.join('{{:{}}}'.format(x) for x in lista_posicion)
         tabla = [cambia_formato.format(*linea) for linea in linea_string]
 
         return "\n".join(tabla)
@@ -303,19 +334,140 @@ class Matriz:
         """
         self.encontrar_FEV()
         datos = "FEV: " + str(self.FEV)
-        datos += "\nU: " + str(self.U)
-        i = 1
+        if self.is_max:
+            datos += "\nU: " + str(self.U)
+        else:
+            datos += "\nU: " + str(self.U*-1)
         if self.degenerada:
-            datos += "\n\nLas variables "
-            while i < len(self.var_degeneradas):
-                if i == len(self.var_degeneradas)-1:
-                    datos += self.var_degeneradas[i]
-                else:
-                    datos += self.var_degeneradas[i] + ", "
-                i += 1
-            datos += " son degeneradas, su resultado en común es " + str(round(self.var_degeneradas[0],2))
-            datos += "\npor lo tanto, la solución es degenerada"
+            datos += "\nLa solución es degenerada"
         return datos
+
+    def degeneradas_a_texto(self):
+        i = 1
+        datos = "Las variables "
+        while i < len(self.var_degeneradas):
+            if i == len(self.var_degeneradas)-1:
+                datos += self.var_degeneradas[i]
+            else:
+                datos += self.var_degeneradas[i] + ", "
+            i += 1
+        datos += " son degeneradas, su resultado en común es " + str(round(self.var_degeneradas[0], 2))
+        return datos
+
+    def definir_ecuaciones_granm(self, diccionario_datos):
+        
+        self.CONST_M = Symbol('M')
+        indice = 0
+        diccionario_datos["fun_ob"] = [-x for x in diccionario_datos["fun_ob"]]
+        var_basicas = []
+        i = 0
+
+        while i < len(diccionario_datos["simb_rest"]):
+            if diccionario_datos["simb_rest"][i] == "<=":
+                diccionario_datos["fun_ob"].append(Rational(0))
+                var_basicas.append(len(diccionario_datos["fun_ob"]))
+
+            elif diccionario_datos["simb_rest"][i] == ">=":
+                diccionario_datos["fun_ob"].append(Rational(0))
+                diccionario_datos["num_rest"] += 1 
+                if diccionario_datos["optm"] == "max":
+                    diccionario_datos["fun_ob"].append(self.CONST_M)
+                    indice = diccionario_datos["fun_ob"].index(self.CONST_M, indice+1, len(diccionario_datos["fun_ob"]))
+                    var_basicas.append(indice + 1)
+                else:
+                    diccionario_datos["fun_ob"].append(-self.CONST_M)
+                    indice = diccionario_datos["fun_ob"].index(-self.CONST_M, indice+1, len(diccionario_datos["fun_ob"]))
+                    var_basicas.append(indice + 1)
+                self.var_artificiales.append(i)
+
+            else:
+                if diccionario_datos["optm"] == "max":
+                    diccionario_datos["fun_ob"].append(self.CONST_M)
+                    indice = diccionario_datos["fun_ob"].index(self.CONST_M, indice+1, len(diccionario_datos["fun_ob"]))
+                    var_basicas.append(indice + 1)
+                else:
+                    diccionario_datos["fun_ob"].append(-self.CONST_M)
+                    indice = diccionario_datos["fun_ob"].index(-self.CONST_M, indice+1, len(diccionario_datos["fun_ob"]))
+                    var_basicas.append(indice + 1)
+                self.var_artificiales.append(i)
+            i += 1
+        
+        diccionario_datos["fun_ob"].append(Rational(0))
+
+        if diccionario_datos["optm"] == "min":
+            diccionario_datos["fun_ob"] = [-x for x in diccionario_datos["fun_ob"]]
+            self.is_max = False
+
+        
+        for rest in diccionario_datos["rest"]: #Coloca los ceros en las restricciones
+            tmp = rest.pop(-1)
+            rest += [Rational(0)] * diccionario_datos["num_rest"]
+            rest += [Rational(tmp)]
+        
+        i = diccionario_datos["num_var"]
+        j = 0
+        for rest in diccionario_datos["rest"]:
+            if diccionario_datos["simb_rest"][j] == ">=":
+                rest[i] = -1
+                rest[i+1] = 1
+                i += 1
+            else:
+                rest[i] = 1
+            j += 1
+            i += 1
+        
+        for i in self.var_artificiales:
+            j = 0
+            while j < len(diccionario_datos["fun_ob"]):
+                diccionario_datos["fun_ob"][j] = diccionario_datos["fun_ob"][j] + (-self.CONST_M * diccionario_datos["rest"][i][j])
+                j += 1
+
+        self.crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, len(diccionario_datos["fun_ob"])-1)
+
+    def acomodar_diccionario(self, diccionario_datos):
+        nueva_fun_ob = []
+        nueva_simb_rest = []
+
+        for fila in diccionario_datos["rest"]:
+            nueva_fun_ob += [fila[-1]]
+
+        nuevas_rest = []
+        for fila in diccionario_datos["rest"]:
+            nuevas_rest += [fila[:-1]]
+        nuevas_rest = transpuesta(nuevas_rest)
+
+        i = 0
+        while i < len(nuevas_rest):
+            nuevas_rest[i] += [diccionario_datos["fun_ob"][i]]
+            i += 1
+
+        if diccionario_datos["optm"] == "max":
+            nueva_optm = "min"
+            simbolo_restricciones = ">="
+            nuevo_metodo = 1        #gran m
+        else:
+            nueva_optm = "max"
+            simbolo_restricciones = "<="
+            nuevo_metodo = 0        #simplex normal
+
+        nuevo_num_var = diccionario_datos["num_rest"]
+
+        nuevo_num_rest = diccionario_datos["num_var"]
+
+        for i in nuevas_rest:
+            nueva_simb_rest.append(simbolo_restricciones)
+        
+        #Guardamos los nuevos valores en el diccionario
+        diccionario_datos["metodo"] = nuevo_metodo
+        diccionario_datos["optm"] = nueva_optm
+        diccionario_datos["num_var"] = nuevo_num_var
+        diccionario_datos["num_rest"] = nuevo_num_rest
+        diccionario_datos["fun_ob"] = nueva_fun_ob
+        diccionario_datos["rest"] = nuevas_rest
+        diccionario_datos["simb_rest"] = nueva_simb_rest
+    
+        return diccionario_datos
+
 
 """Fuera de clase Matriz"""
 
@@ -347,12 +499,12 @@ def leer_archivo(nombre_archivo):
                     diccionario_datos["num_rest"] = int(lista_datos[3].replace("\n", ""))
                 
                 elif contador == 1:
-                    diccionario_datos["fun_ob"] = list(map(float, lista_datos))
+                    diccionario_datos["fun_ob"] = list(map(Rational, lista_datos))  
      
                 else:
                     diccionario_datos["simb_rest"].append(lista_datos[-2])
                     lista_datos.pop(-2)
-                    diccionario_datos["rest"] += [list(map(float, lista_datos))]
+                    diccionario_datos["rest"] += [list(map(Rational, lista_datos))]
                 
                 contador += 1
         archivo.close()
@@ -427,82 +579,65 @@ def limpiar_archivo_solucion(nombre_archivo):
     except:
         print("\nNo se pudo crear o abrir el archivo\n")
 
+def obtener_solucion(nombre_archivo):
+    num_iteracion = 0
+    diccionario_datos = leer_archivo(nombre_archivo)
+    matriz = Matriz(diccionario_datos)
+    limpiar_archivo_solucion(nombre_archivo)
+    matriz.nom_archivo = nombre_archivo
+    
+    while(True):
+        
+        if matriz.soluciones_multiples:
+            print(matriz.datos_sol_optima())
+
+        escribir_archivo(nombre_archivo,"\nIteracion " + str(num_iteracion))
+        escribir_archivo(nombre_archivo,matriz.matriz_a_texto())
+        matriz.iterar()
+        escribir_archivo(nombre_archivo,matriz.datos_solucion())
+
+        if (matriz.verificar_optimalidad()):
+            if matriz.soluciones_multiples:
+                escribir_archivo(nombre_archivo, "Solución múltiple en: " + matriz.columna_pivote[0])
+                print ("Solución múltiple en: " + matriz.columna_pivote[0])
+                escribir_archivo(nombre_archivo,"\nIteracion extra")
+                print("\nIteracion extra")
+            else:
+                escribir_archivo(nombre_archivo,"\nIteracion Final")  
+            escribir_archivo(nombre_archivo, matriz.matriz_a_texto())
+            print(matriz.datos_sol_optima())
+            escribir_archivo(nombre_archivo,matriz.datos_sol_optima())
+            break
+
+        num_iteracion += 1
+
+def transpuesta(matriz):
+    matriz_transpuesta = []
+
+    for j in range(len(matriz[0])):
+        matriz_transpuesta.append([])
+        for i in range(len(matriz)):
+            matriz_transpuesta[j].append(matriz[i][j])
+
+    return matriz_transpuesta
 
 def principal(args):
     """ Función encargada de la ejecución del programa
             E: recibe los argumento ingresados por consola
             S: N/A
     """
-    
-    diccionario_datos = {}
-    num_iteracion = 0
 
     if len(args) == 3 and args[1] == "-h":
         imprimir_ayuda()
-        diccionario_datos = leer_archivo(args[2])
-        matriz = Matriz(diccionario_datos)
-        limpiar_archivo_solucion(args[2])
-        matriz.nom_archivo = args[2]
-       
-        while(True):
-            
-            if matriz.soluciones_multiples:
-                print(matriz.datos_sol_optima())
- 
-            escribir_archivo(args[2],"\nIteracion " + str(num_iteracion))
-            escribir_archivo(args[2],matriz.matriz_a_texto())
-            matriz.iterar()
-            escribir_archivo(args[2],matriz.datos_solucion())
+        obtener_solucion(args[2])
 
-            if (matriz.verificar_optimalidad()):
-                if matriz.soluciones_multiples:
-                    escribir_archivo(args[2], "Solución múltiple en: " + matriz.columna_pivote[0])
-                    print ("Solución múltiple en: " + matriz.columna_pivote[0])
-                    escribir_archivo(args[2],"\nIteracion extra")
-                    print("\nIteracion extra")
-                else:
-                    escribir_archivo(args[2],"\nIteracion Final")  
-                escribir_archivo(args[2], matriz.matriz_a_texto())
-                print(matriz.datos_sol_optima())
-                escribir_archivo(args[2],matriz.datos_sol_optima())
-                break
-
-            num_iteracion += 1
     elif len(args) == 2:
 
         if args[1] == "-h":
             imprimir_ayuda()
         
         else:
-            diccionario_datos = leer_archivo(args[1])
-            matriz = Matriz(diccionario_datos)
-            limpiar_archivo_solucion(args[1])
-            matriz.nom_archivo = args[1]
-        
-            while(True):
-                
-                if matriz.soluciones_multiples:
-                    print(matriz.datos_sol_optima())
-    
-                escribir_archivo(args[1],"\nIteracion " + str(num_iteracion))
-                escribir_archivo(args[1],matriz.matriz_a_texto())
-                matriz.iterar()
-                escribir_archivo(args[1],matriz.datos_solucion())
-
-                if (matriz.verificar_optimalidad()):
-                    if matriz.soluciones_multiples:
-                        escribir_archivo(args[1], "Solución múltiple en: " + matriz.columna_pivote[0])
-                        print ("Solución múltiple en: " + matriz.columna_pivote[0])
-                        escribir_archivo(args[1],"\nIteracion extra")
-                        print("\nIteracion extra")
-                    else:
-                        escribir_archivo(args[1],"\nIteracion Final")  
-                    escribir_archivo(args[1], matriz.matriz_a_texto())
-                    print(matriz.datos_sol_optima())
-                    escribir_archivo(args[1],matriz.datos_sol_optima())
-                    break
-
-                num_iteracion += 1
+            obtener_solucion(args[1])
     else:
         print("\nIngrese [-h] para recibir ayuda de utilización del programa\n")
         return
