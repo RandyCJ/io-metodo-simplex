@@ -4,7 +4,7 @@ import sympy
 from iteration_utilities import duplicates
 from sympy import *
 from sympy.core.rules import Transform
-from simplex2 import Matriz
+from simplex import Matriz
 
 def crear_matriz(matriz, variables_basicas, cant_variables, es_maximizacion):
     """ Crea la matriz junto con el encabezado de las variables y los números y valores de cada una
@@ -44,6 +44,7 @@ def definir_ecuaciones(diccionario_datos, CONST_M):
         E: Recibe el diccionario de datos con los datos que se recolectaron al leer el archivo
         S: N/A
     """
+    dual = False
 
     if diccionario_datos["metodo"] == 3:   #dual
         dual = True
@@ -52,8 +53,8 @@ def definir_ecuaciones(diccionario_datos, CONST_M):
     diccionario_datos["fun_ob"] = [-x for x in diccionario_datos["fun_ob"]] #Se vuelven negativos todos los números de la función objetivo
 
     if diccionario_datos["metodo"] == 1:   #gran m
-        return definir_ecuaciones_granm(diccionario_datos, CONST_M)
-    
+        return (definir_ecuaciones_granm(diccionario_datos, CONST_M),dual)
+
     diccionario_datos["fun_ob"] += [Rational(0)] * (diccionario_datos["num_rest"] + 1) #Agrega los ceros dependiendo de la cantidad de restricciones
 
     for rest in diccionario_datos["rest"]: #Coloca los ceros y unos en las restricciones
@@ -67,7 +68,7 @@ def definir_ecuaciones(diccionario_datos, CONST_M):
         i += 1
 
     var_basicas = [x for x in range(diccionario_datos["num_var"]+1, len(diccionario_datos["fun_ob"]))]
-    return [crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, diccionario_datos["num_var"] + diccionario_datos["num_rest"], True)]
+    return ([crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, diccionario_datos["num_var"] + diccionario_datos["num_rest"], True)],dual)
 
 def definir_ecuaciones_granm(diccionario_datos, CONST_M):
     indice = 0
@@ -290,11 +291,18 @@ def limpiar_archivo_solucion(nombre_archivo):
     except:
         print("\nNo se pudo crear o abrir el archivo\n")
 
-def manejar_degenerada(matriz, nombre_archivo):
-    msj_acotada = 'La columna ' + str(matriz.columna_pivote[1]+1)
-    msj_acotada += ' con la VB entrante ' + matriz.columna_pivote[0]
-    msj_acotada += ' no tiene números mayores a 0'
-    msj_acotada += "\nPor ello la solución es no acotada"
+def manejar_no_acotada(matriz, nombre_archivo):
+    if matriz.dual:
+        msj_acotada = 'La solución dual es no acotada en '
+        msj_acotada += 'la columna ' + str(matriz.columna_pivote[1]+1)
+        msj_acotada += ' con la VB entrante ' + matriz.columna_pivote[0]
+        msj_acotada += '\nPor ello la solución primal no tiene soluciones factibles'
+    else:
+        msj_acotada = 'La columna ' + str(matriz.columna_pivote[1]+1)
+        msj_acotada += ' con la VB entrante ' + matriz.columna_pivote[0]
+        msj_acotada += ' no tiene números mayores a 0'
+        msj_acotada += "\nPor ello la solución es no acotada"
+
     escribir_archivo(nombre_archivo,"\n" + msj_acotada)
     print(msj_acotada)
     quit()
@@ -303,10 +311,14 @@ def obtener_solucion(nombre_archivo):
     CONST_M = Symbol('M')
     num_iteracion = 0
     diccionario_datos = leer_archivo(nombre_archivo)
-    matriz_inicial = definir_ecuaciones(diccionario_datos, CONST_M)
+    tupla_tmp = definir_ecuaciones(diccionario_datos, CONST_M)
+    matriz_inicial = tupla_tmp[0]
     matriz = Matriz(matriz_inicial[0])
+    matriz.dual = tupla_tmp[1]
+
     if diccionario_datos["metodo"] == 1:
         matriz.definir_artificiales(matriz_inicial[1], CONST_M)
+
     limpiar_archivo_solucion(nombre_archivo)
     matriz.nom_archivo = nombre_archivo
     
@@ -320,17 +332,27 @@ def obtener_solucion(nombre_archivo):
         try:
             matriz.iterar()
         except Exception as e:
-            manejar_degenerada(matriz, nombre_archivo)
+            manejar_no_acotada(matriz, nombre_archivo)
         escribir_archivo(nombre_archivo,matriz.datos_solucion())
+            
+        if matriz.verificar_optimalidad():
 
-        if (matriz.verificar_optimalidad()):
+            if matriz.dual:
+                escribir_archivo(nombre_archivo,"\nIteracion Final Dual")
+                escribir_archivo(nombre_archivo, matriz.matriz_a_texto())
+                print(datos_sol_optima_dual(matriz))
+                escribir_archivo(nombre_archivo,"\nSolución primal:")
+                escribir_archivo(nombre_archivo,datos_sol_optima_dual(matriz))
+                break
+
             if matriz.soluciones_multiples:
                 escribir_archivo(nombre_archivo, "Solución múltiple en: " + matriz.columna_pivote[0])
                 print ("Solución múltiple en: " + matriz.columna_pivote[0])
                 escribir_archivo(nombre_archivo,"\nIteracion extra")
                 print("\nIteracion extra")
             else:
-                escribir_archivo(nombre_archivo,"\nIteracion Final")  
+                escribir_archivo(nombre_archivo,"\nIteracion Final")
+
             escribir_archivo(nombre_archivo, matriz.matriz_a_texto())
             print(matriz.datos_sol_optima())
             escribir_archivo(nombre_archivo,matriz.datos_sol_optima())
@@ -347,6 +369,31 @@ def transpuesta(matriz):
             matriz_transpuesta[j].append(matriz[i][j])
 
     return matriz_transpuesta
+
+def encontrar_FEV_dual(matriz):
+
+        matriz.U = matriz.matriz[1][-1]
+        matriz.FEV = []
+        matriz.encontrar_basicas()
+        columna = 1
+
+        while columna < len(matriz.matriz[0][:-1]):
+            if matriz.matriz[0][columna] not in matriz.variables_basicas:
+                matriz.FEV.append(matriz.matriz[1][columna])
+            else:
+                matriz.FEV += [0]
+            columna += 1
+
+def datos_sol_optima_dual(matriz):
+
+        encontrar_FEV_dual(matriz)
+        datos = "FEV: " + str(matriz.FEV)
+        if matriz.is_max:
+            datos += "\nU: " + str(matriz.U)
+        else:
+            datos += "\nU: " + str(matriz.U*-1)
+
+        return datos
 
 def principal(args):
     """ Función encargada de la ejecución del programa
