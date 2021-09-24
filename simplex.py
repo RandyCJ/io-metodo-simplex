@@ -25,15 +25,44 @@ class Matriz:
     dual = False
     CONST_M = 0
     var_artificiales = []
-    is_max = True
+    es_max = True
 
     def __init__(self, matriz) -> None:
         self.matriz = matriz
         if matriz[1][0] == "-U":
-            self.is_max = False
+            self.es_max = False
     
     def definir_artificiales(self, var_artificiales, M):
-        self.var_artificiales = var_artificiales
+        """ Define las variables artificiales en la matriz con A1, A2...
+            E: las variables artificiales en orden de X4, X6.., la constante M
+            S: N/A
+        """
+        artificiales_tmp = []
+        for n in var_artificiales:
+            artificiales_tmp.append("X" + str(n))
+
+        i = 1
+        num_artificial = 1
+        num_normal = 1
+        # Primero cambia las variables en la primera fila
+        while i < len(self.matriz[0])-1:
+            if self.matriz[0][i] in artificiales_tmp:
+                self.matriz[0][i] = "A" + str(num_artificial)
+                self.var_artificiales.append("A" + str(num_artificial))
+                num_artificial += 1
+            else:
+                self.matriz[0][i] = "X" + str(num_normal)
+                num_normal += 1
+            i += 1
+
+        #Ahora las cambia de la columna de variables basicas
+        i = 2
+        num_artificial = 1
+        while i < len(self.matriz):
+            if self.matriz[i][0] in artificiales_tmp:
+                self.matriz[i][0] = "A" + str(num_artificial)
+                num_artificial += 1
+            i += 1
         self.CONST_M = M
 
     def encontrar_entrante(self):
@@ -230,7 +259,7 @@ class Matriz:
             S: string con los datos de la solución
         """
         str_matriz = "FEV: " + str(self.FEV)
-        if self.is_max:
+        if self.es_max:
             str_matriz += "\nU: " + str(self.U)
         else:
             str_matriz += "\nU: " + str(self.U*-1)
@@ -252,7 +281,7 @@ class Matriz:
         while(fila < len(self.matriz)):
             columna = 1
             while(columna < len(self.matriz[0])):
-                matriz_redondeada[fila][columna] = self.matriz[fila][columna]#.evalf(3)
+                matriz_redondeada[fila][columna] = self.matriz[fila][columna]
                 columna += 1
             fila += 1
         
@@ -271,7 +300,7 @@ class Matriz:
         """
         self.encontrar_FEV()
         datos = "FEV: " + str(self.FEV)
-        if self.is_max:
+        if self.es_max:
             datos += "\nU: " + str(self.U)
         else:
             datos += "\nU: " + str(self.U*-1)
@@ -290,3 +319,17 @@ class Matriz:
             i += 1
         datos += " son degeneradas, su resultado en común es " + str(round(self.var_degeneradas[0], 2))
         return datos
+
+    def verificar_artificiales(self):
+        """ Verifica en la solucion óptima que las variables artificiales no sean positivas
+            que significaría que la solución es no factible
+            E: N/A
+            S: Retorna 0 si hay solucion factible, caso contrario retorna el X artificial que seria un string
+        """
+        fila = 2
+
+        while fila < len(self.matriz)-1:
+            if self.matriz[fila][-1] > 0 and self.matriz[fila][0] in self.var_artificiales:
+                return self.matriz[fila][0]
+            fila += 1
+        return 0

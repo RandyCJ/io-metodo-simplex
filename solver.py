@@ -73,6 +73,7 @@ def definir_ecuaciones(diccionario_datos, CONST_M):
 def definir_ecuaciones_granm(diccionario_datos, CONST_M):
     indice = 0
     var_basicas = []
+    indice_var_artificiales = []
     var_artificiales = []
     i = 0
     es_maximizacion = True
@@ -92,7 +93,8 @@ def definir_ecuaciones_granm(diccionario_datos, CONST_M):
                 diccionario_datos["fun_ob"].append(-CONST_M)
                 indice = diccionario_datos["fun_ob"].index(-CONST_M, indice+1, len(diccionario_datos["fun_ob"]))
             var_basicas.append(indice + 1)
-            var_artificiales.append(i)
+            indice_var_artificiales.append(i)
+            var_artificiales.append(indice + 1)
 
         else:
             if diccionario_datos["optm"] == "max":
@@ -102,7 +104,8 @@ def definir_ecuaciones_granm(diccionario_datos, CONST_M):
                 diccionario_datos["fun_ob"].append(-CONST_M)
                 indice = diccionario_datos["fun_ob"].index(-CONST_M, indice+1, len(diccionario_datos["fun_ob"]))
             var_basicas.append(indice + 1)
-            var_artificiales.append(i)
+            indice_var_artificiales.append(i)
+            var_artificiales.append(indice + 1)
         i += 1
     
     diccionario_datos["fun_ob"].append(Rational(0))
@@ -128,12 +131,11 @@ def definir_ecuaciones_granm(diccionario_datos, CONST_M):
         j += 1
         i += 1
     
-    for i in var_artificiales:
+    for i in indice_var_artificiales:
         j = 0
         while j < len(diccionario_datos["fun_ob"]):
             diccionario_datos["fun_ob"][j] = diccionario_datos["fun_ob"][j] + (-CONST_M * diccionario_datos["rest"][i][j])
             j += 1
-
     return [crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, len(diccionario_datos["fun_ob"])-1, es_maximizacion), var_artificiales]
 
 def acomodar_diccionario(diccionario_datos):
@@ -307,6 +309,12 @@ def manejar_no_acotada(matriz, nombre_archivo):
     print(msj_acotada)
     quit()
 
+def manejar_no_factible(nombre_archivo, var_no_factible):
+    msj_no_factible = "La variable artificial " + var_no_factible + " es positiva\n"
+    msj_no_factible += "Por lo tanto la solucion no es factible"
+    escribir_archivo(nombre_archivo, "\n" + msj_no_factible)
+    print(msj_no_factible)
+
 def obtener_solucion(nombre_archivo):
     CONST_M = Symbol('M')
     num_iteracion = 0
@@ -356,6 +364,9 @@ def obtener_solucion(nombre_archivo):
             escribir_archivo(nombre_archivo, matriz.matriz_a_texto())
             print(matriz.datos_sol_optima())
             escribir_archivo(nombre_archivo,matriz.datos_sol_optima())
+            no_factible = matriz.verificar_artificiales()
+            if no_factible != 0:
+                manejar_no_factible(nombre_archivo, no_factible)
             break
 
         num_iteracion += 1
@@ -388,7 +399,7 @@ def datos_sol_optima_dual(matriz):
 
         encontrar_FEV_dual(matriz)
         datos = "FEV: " + str(matriz.FEV)
-        if matriz.is_max:
+        if matriz.es_max:
             datos += "\nU: " + str(matriz.U)
         else:
             datos += "\nU: " + str(matriz.U*-1)
