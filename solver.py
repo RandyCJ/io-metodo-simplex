@@ -309,9 +309,15 @@ def manejar_no_acotada(matriz, nombre_archivo):
     print(msj_acotada)
     quit()
 
-def manejar_no_factible(nombre_archivo, var_no_factible):
-    msj_no_factible = "La variable artificial " + var_no_factible + " es positiva\n"
-    msj_no_factible += "Por lo tanto la solucion no es factible"
+def manejar_no_factible(matriz, nombre_archivo, var_no_factible):
+    if matriz.dual:
+        msj_no_factible = "La variable artificial " + var_no_factible + " es positiva "
+        msj_no_factible += "esto hace la solución dual no factible"
+        msj_no_factible += "\nPor ello la solución primal no tiene soluciones factibles "
+        msj_no_factible += "o es no acotada"
+    else:
+        msj_no_factible = "La variable artificial " + var_no_factible + " es positiva\n"
+        msj_no_factible += "Por lo tanto la solución no es factible"
     escribir_archivo(nombre_archivo, "\n" + msj_no_factible)
     print(msj_no_factible)
 
@@ -351,6 +357,9 @@ def obtener_solucion(nombre_archivo):
                 print(datos_sol_optima_dual(matriz))
                 escribir_archivo(nombre_archivo,"\nSolución primal:")
                 escribir_archivo(nombre_archivo,datos_sol_optima_dual(matriz))
+                no_factible = matriz.verificar_artificiales()
+                if no_factible != 0:
+                   manejar_no_factible(matriz,nombre_archivo, no_factible)
                 break
 
             if matriz.soluciones_multiples:
@@ -365,8 +374,9 @@ def obtener_solucion(nombre_archivo):
             print(matriz.datos_sol_optima())
             escribir_archivo(nombre_archivo,matriz.datos_sol_optima())
             no_factible = matriz.verificar_artificiales()
+            print(no_factible)
             if no_factible != 0:
-                manejar_no_factible(nombre_archivo, no_factible)
+                manejar_no_factible(matriz, nombre_archivo, no_factible)
             break
 
         num_iteracion += 1
