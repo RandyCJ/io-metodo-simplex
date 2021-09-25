@@ -18,6 +18,7 @@ class Matriz:
     acotada = False
     degenerada = False
     var_degeneradas = [] # Contiene las variables que son degeneradas si existen
+    var_holgura = [] 
     soluciones_multiples = False
     nom_archivo = ""
     U = 0

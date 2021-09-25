@@ -11,6 +11,7 @@ def crear_matriz(matriz, variables_basicas, cant_variables, es_maximizacion):
         E: una matriz con solo los valores, las variables que van en la columna 0 y la cantidad de variables que deben haber, un booleano si es Max o Min
         S: N/A
     """
+
     encabezado = ["VB"]
 
     for i in range(cant_variables):
@@ -333,6 +334,7 @@ def obtener_solucion(nombre_archivo):
     if diccionario_datos["metodo"] == 1:
         matriz.definir_artificiales(matriz_inicial[1], CONST_M)
 
+    sacar_holgura(matriz, diccionario_datos)
     limpiar_archivo_solucion(nombre_archivo)
     matriz.nom_archivo = nombre_archivo
     
@@ -374,7 +376,6 @@ def obtener_solucion(nombre_archivo):
             print(matriz.datos_sol_optima())
             escribir_archivo(nombre_archivo,matriz.datos_sol_optima())
             no_factible = matriz.verificar_artificiales()
-            print(no_factible)
             if no_factible != 0:
                 manejar_no_factible(matriz, nombre_archivo, no_factible)
             break
@@ -397,13 +398,16 @@ def encontrar_FEV_dual(matriz):
         matriz.FEV = []
         matriz.encontrar_basicas()
         columna = 1
+        tmp = []                              #Esto hay que revisarlo
 
         while columna < len(matriz.matriz[0][:-1]):
-            if matriz.matriz[0][columna] not in matriz.variables_basicas:
-                matriz.FEV.append(matriz.matriz[1][columna])
-            else:
-                matriz.FEV += [0]
+            if matriz.matriz[0][columna] in matriz.var_holgura:
+                tmp.append(matriz.matriz[1][columna])
             columna += 1
+        matriz.FEV += tmp
+        
+        while len(matriz.FEV) < len(matriz.matriz[0][1:-1]):
+            matriz.FEV.append(0)
 
 def datos_sol_optima_dual(matriz):
 
@@ -415,6 +419,20 @@ def datos_sol_optima_dual(matriz):
             datos += "\nU: " + str(matriz.U*-1)
 
         return datos
+
+def sacar_holgura(matriz, diccionario_datos):
+
+    i = diccionario_datos["num_var"]
+    candidatos_holgura = []
+    while i < len(matriz.matriz[0][1:-1]):
+        candidatos_holgura.append("X" + str(i+1))
+        i += 1
+
+    i = 0
+    while i < len(matriz.matriz[0][1:]):
+        if matriz.matriz[0][i] in candidatos_holgura:
+            matriz.var_holgura.append(matriz.matriz[0][i])
+        i += 1
 
 def principal(args):
     """ Función encargada de la ejecución del programa
