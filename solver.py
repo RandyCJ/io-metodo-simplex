@@ -11,7 +11,6 @@ def crear_matriz(matriz, variables_basicas, cant_variables, es_maximizacion):
         E: una matriz con solo los valores, las variables que van en la columna 0 y la cantidad de variables que deben haber, un booleano si es Max o Min
         S: N/A
     """
-
     encabezado = ["VB"]
 
     for i in range(cant_variables):
@@ -32,6 +31,7 @@ def crear_matriz(matriz, variables_basicas, cant_variables, es_maximizacion):
             nueva_matriz.append(nueva_fila)
             i += 1
         else:
+        
             nueva_fila.append("X" + str(variables_basicas[i-1]))
             nueva_fila += fila
             nueva_matriz.append(nueva_fila)
@@ -55,6 +55,9 @@ def definir_ecuaciones(diccionario_datos, CONST_M):
 
     if diccionario_datos["metodo"] == 1:   #gran m
         return (definir_ecuaciones_granm(diccionario_datos, CONST_M),dual)
+    
+    if diccionario_datos["metodo"] == 2:   #Dos fases
+        return (definir_ecuaciones_primera_fase(diccionario_datos),dual)
 
     diccionario_datos["fun_ob"] += [Rational(0)] * (diccionario_datos["num_rest"] + 1) #Agrega los ceros dependiendo de la cantidad de restricciones
 
@@ -138,6 +141,166 @@ def definir_ecuaciones_granm(diccionario_datos, CONST_M):
             diccionario_datos["fun_ob"][j] = diccionario_datos["fun_ob"][j] + (-CONST_M * diccionario_datos["rest"][i][j])
             j += 1
     return [crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, len(diccionario_datos["fun_ob"])-1, es_maximizacion), var_artificiales]
+
+def definir_ecuaciones_primera_fase(diccionario_datos):     
+    var_basicas = []
+    var_artificiales = []
+    var_exceso = [] 
+    fun_ob_1 = []
+    rest_artificiales = []
+    resultado_rest = 0
+    i = 0
+    agregar_0 = 0
+    variable = 0
+    es_maximizacion = True
+    fun_ob_1.extend([0] * len (diccionario_datos["rest"][0]))
+    
+    if diccionario_datos["optm"] == "min":
+        es_maximizacion = False
+
+    while i < len(diccionario_datos["simb_rest"]):
+
+        if diccionario_datos["simb_rest"][i] == "<=":
+            
+            cantidad = len(var_exceso) + len (var_artificiales)
+
+            while agregar_0 < cantidad :
+                resultado_rest = diccionario_datos["rest"][i][-1]
+                diccionario_datos["rest"][i].pop(-1)
+                diccionario_datos["rest"][i].append(0)
+                diccionario_datos["rest"][i].append(resultado_rest)
+                agregar_0 += 1 
+            
+            resultado_rest = diccionario_datos["rest"][i][-1]
+            diccionario_datos["rest"][i].pop(-1)
+            diccionario_datos["rest"][i].append(1)
+            var_exceso.append(len(diccionario_datos["rest"][i])-1)
+            var_basicas.append(len(diccionario_datos["rest"][i])-1)
+            diccionario_datos["rest"][i].append(resultado_rest)
+            
+            if  i-1 >= 0:
+                for restriccion in diccionario_datos["rest"]:
+                    if len (diccionario_datos["rest"][i]) > len (diccionario_datos["rest"][i-1]):
+                        extra_ceros = len (diccionario_datos["rest"][i]) - len (diccionario_datos["rest"][i-1])
+                        resultado_rest= restriccion.pop(-1)
+                        restriccion.extend([0] * extra_ceros)
+                        restriccion.append(resultado_rest)
+            
+            fun_ob_1.extend([0])
+            agregar_0 = 0
+            
+        
+        elif diccionario_datos["simb_rest"][i] == ">=":
+            
+            cantidad = len(var_exceso) + len (var_artificiales)
+
+            while agregar_0 < cantidad :
+                resultado_rest = diccionario_datos["rest"][i][-1]
+                diccionario_datos["rest"][i].pop(-1)
+                diccionario_datos["rest"][i].append(0)
+                diccionario_datos["rest"][i].append(resultado_rest)
+                agregar_0 += 1  
+            
+            
+            resultado_rest = diccionario_datos["rest"][i][-1]
+            diccionario_datos["rest"][i].pop(-1)
+            diccionario_datos["rest"][i].append(-1)
+            var_exceso.append(len(diccionario_datos["rest"][i])-1)
+            var_artificiales.append(len(diccionario_datos["rest"][i]))
+            var_basicas.append(len(diccionario_datos["rest"][i]))
+            diccionario_datos["rest"][i].append(1)
+            diccionario_datos["rest"][i].append(resultado_rest)
+
+            if  i-1 >= 0:
+                for restriccion in diccionario_datos["rest"]:
+                    if len (diccionario_datos["rest"][i]) > len (diccionario_datos["rest"][i-1]):
+                        extra_ceros = len (diccionario_datos["rest"][i]) - len (diccionario_datos["rest"][i-1])
+                        resultado_rest= restriccion.pop(-1)
+                        restriccion.extend([0] * extra_ceros)
+                        restriccion.append(resultado_rest)
+            
+            
+            resultado_rest = fun_ob_1.pop(-1) + diccionario_datos["rest"][i][-1]
+            fun_ob_1.extend([0] * 2)
+        
+            while variable <  len(diccionario_datos["rest"][i])-1:
+                if variable in var_artificiales:
+                    fun_ob_1[variable] = 0
+                
+                elif variable in var_exceso:
+                    fun_ob_1[variable] = 1
+
+                elif diccionario_datos["rest"][i][variable] >= 0:
+                    fun_ob_1[variable] = fun_ob_1[variable] - (diccionario_datos["rest"][i][variable])    
+                
+                elif diccionario_datos["rest"][i][variable] < 0:
+                    fun_ob_1[variable] = fun_ob_1[variable] + (diccionario_datos["rest"][i][variable]) 
+            
+                variable += 1
+            fun_ob_1.append(resultado_rest)
+            agregar_0 = 0
+            variable = 0
+            rest_artificiales.append(i)
+            
+            
+        elif diccionario_datos["simb_rest"][i] == "=":
+            
+            cantidad = len(var_exceso) + len (var_artificiales)
+
+            while agregar_0 < cantidad :
+                resultado_rest = diccionario_datos["rest"][i][-1]
+                diccionario_datos["rest"][i].pop(-1)
+                diccionario_datos["rest"][i].append(0)
+                diccionario_datos["rest"][i].append(resultado_rest)
+                agregar_0 += 1  
+            
+            
+            resultado_rest = diccionario_datos["rest"][i][-1]
+            diccionario_datos["rest"][i].pop(-1)
+            diccionario_datos["rest"][i].append(1)
+            var_artificiales.append(len(diccionario_datos["rest"][i]))
+            var_basicas.append(len(diccionario_datos["rest"][i]))
+            diccionario_datos["rest"][i].append(resultado_rest)
+
+            if  i-1 >= 0:
+                for restriccion in diccionario_datos["rest"]:
+                    if len (diccionario_datos["rest"][i]) > len (diccionario_datos["rest"][i-1]):
+                        extra_ceros = len (diccionario_datos["rest"][i]) - len (diccionario_datos["rest"][i-1])
+                        resultado_rest= restriccion.pop(-1)
+                        restriccion.extend([0] * extra_ceros)
+                        restriccion.append(resultado_rest)
+                
+                
+
+            resultado_rest = fun_ob_1.pop(-1) + diccionario_datos["rest"][i][-1]
+            fun_ob_1.extend([0])
+        
+            while variable <  len(diccionario_datos["rest"][i])-1:
+                if variable in var_artificiales:
+                    fun_ob_1[variable] = 0
+                
+                elif variable in var_exceso:
+                    fun_ob_1[variable] = 1
+
+                elif diccionario_datos["rest"][i][variable] >= 0:
+                    fun_ob_1[variable] = fun_ob_1[variable] - (diccionario_datos["rest"][i][variable])    
+                
+                elif diccionario_datos["rest"][i][variable] < 0:
+                    fun_ob_1[variable] = fun_ob_1[variable] + (diccionario_datos["rest"][i][variable]) 
+            
+                variable += 1
+            fun_ob_1.append(resultado_rest)
+            agregar_0 = 0
+            variable = 0
+            rest_artificiales.append(i)
+        
+        i+=1
+    fun_ob_1[-1]= -fun_ob_1[-1]
+    return [crear_matriz([fun_ob_1] + diccionario_datos["rest"], var_basicas , len(fun_ob_1)-1, es_maximizacion), var_artificiales]
+
+
+
+
 
 def acomodar_diccionario(diccionario_datos):
     nueva_fun_ob = []
@@ -334,6 +497,10 @@ def obtener_solucion(nombre_archivo):
     if diccionario_datos["metodo"] == 1:
         matriz.definir_artificiales(matriz_inicial[1], CONST_M)
 
+    if diccionario_datos["metodo"] == 2:
+        matriz.definir_artificiales(matriz_inicial[1], CONST_M)
+        matriz.dos_fases = True
+    
     sacar_holgura(matriz, diccionario_datos)
     limpiar_archivo_solucion(nombre_archivo)
     matriz.nom_archivo = nombre_archivo
@@ -342,7 +509,7 @@ def obtener_solucion(nombre_archivo):
         
         if matriz.soluciones_multiples:
             print(matriz.datos_sol_optima())
-
+        
         escribir_archivo(nombre_archivo,"\nIteracion " + str(num_iteracion))
         escribir_archivo(nombre_archivo,matriz.matriz_a_texto())
         try:
@@ -381,6 +548,32 @@ def obtener_solucion(nombre_archivo):
             break
 
         num_iteracion += 1
+    
+    if matriz.dos_fases:
+        matriz.matriz = eliminar_artificiales(matriz.matriz,matriz.var_artificiales)
+        cambiar_fun_obj(matriz.matriz)        
+
+def eliminar_artificiales(matriz,var_artificiales):
+    i=1
+    nueva_matriz = transpuesta(matriz)
+    for fila in nueva_matriz:
+        
+        if fila[0] in var_artificiales:
+            nueva_matriz.pop(nueva_matriz.index(fila))
+
+    nueva_matriz = transpuesta(nueva_matriz)
+
+    return nueva_matriz
+
+def cambiar_fun_obj(matriz):
+    i = 0
+    matriz = transpuesta(matriz)
+    var_basicas = matriz[0][2:]
+    matriz = transpuesta(matriz)
+    
+    print(var_basicas)
+    return 0
+
 
 def transpuesta(matriz):
     matriz_transpuesta = []

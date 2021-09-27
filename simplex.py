@@ -24,6 +24,7 @@ class Matriz:
     U = 0
     FEV = []
     dual = False
+    dos_fases = False
     CONST_M = 0
     var_artificiales = []
     es_max = True
@@ -240,6 +241,9 @@ class Matriz:
         for n in funcion_objetivo[:-1]:
             if n < 0:
                 return False
+
+        if (self.dos_fases):
+            return True
 
         #Si no los hay entonces revisa por soluciones múltiples      
         if (not(self.soluciones_multiples)):
