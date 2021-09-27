@@ -44,26 +44,18 @@ class Matriz:
             artificiales_tmp.append("X" + str(n))
 
         i = 1
-        num_artificial = 1
-        num_normal = 1
         # Primero cambia las variables en la primera fila
         while i < len(self.matriz[0])-1:
             if self.matriz[0][i] in artificiales_tmp:
-                self.matriz[0][i] = "A" + str(num_artificial)
-                self.var_artificiales.append("A" + str(num_artificial))
-                num_artificial += 1
-            else:
-                self.matriz[0][i] = "X" + str(num_normal)
-                num_normal += 1
+                self.matriz[0][i] = "R" + self.matriz[0][i][1:]
+                self.var_artificiales.append(self.matriz[0][i])
             i += 1
 
         #Ahora las cambia de la columna de variables basicas
         i = 2
-        num_artificial = 1
         while i < len(self.matriz):
             if self.matriz[i][0] in artificiales_tmp:
-                self.matriz[i][0] = "A" + str(num_artificial)
-                num_artificial += 1
+                self.matriz[i][0] = "R" + self.matriz[i][0][1:]
             i += 1
         self.CONST_M = M
 
