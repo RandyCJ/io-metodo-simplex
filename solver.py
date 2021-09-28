@@ -141,7 +141,6 @@ def definir_ecuaciones_granm(diccionario_datos, CONST_M):
             diccionario_datos["fun_ob"][j] = diccionario_datos["fun_ob"][j] + (-CONST_M * diccionario_datos["rest"][i][j])
             j += 1
     return [crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, len(diccionario_datos["fun_ob"])-1, es_maximizacion), var_artificiales]
-
 def definir_ecuaciones_primera_fase(diccionario_datos):     
     var_basicas = []
     var_artificiales = []
@@ -150,6 +149,7 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
     rest_artificiales = []
     resultado_rest = 0
     i = 0
+    indice = 0
     agregar_0 = 0
     variable = 0
     es_maximizacion = True
@@ -176,6 +176,7 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
             diccionario_datos["rest"][i].append(1)
             var_exceso.append(len(diccionario_datos["rest"][i])-1)
             var_basicas.append(len(diccionario_datos["rest"][i])-1)
+            
             diccionario_datos["rest"][i].append(resultado_rest)
             
             if  i-1 >= 0:
@@ -206,9 +207,10 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
             diccionario_datos["rest"][i].pop(-1)
             diccionario_datos["rest"][i].append(-1)
             var_exceso.append(len(diccionario_datos["rest"][i])-1)
-            var_artificiales.append(len(diccionario_datos["rest"][i]))
-            var_basicas.append(len(diccionario_datos["rest"][i]))
             diccionario_datos["rest"][i].append(1)
+            var_artificiales.append(len(diccionario_datos["rest"][i])-1)
+            var_basicas.append(len(diccionario_datos["rest"][i])-1)
+
             diccionario_datos["rest"][i].append(resultado_rest)
 
             if  i-1 >= 0:
@@ -228,6 +230,7 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
                     fun_ob_1[variable] = 0
                 
                 elif variable in var_exceso:
+                    print(variable)
                     fun_ob_1[variable] = 1
 
                 elif diccionario_datos["rest"][i][variable] >= 0:
@@ -235,7 +238,7 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
                 
                 elif diccionario_datos["rest"][i][variable] < 0:
                     fun_ob_1[variable] = fun_ob_1[variable] + (diccionario_datos["rest"][i][variable]) 
-            
+                
                 variable += 1
             fun_ob_1.append(resultado_rest)
             agregar_0 = 0
@@ -258,8 +261,8 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
             resultado_rest = diccionario_datos["rest"][i][-1]
             diccionario_datos["rest"][i].pop(-1)
             diccionario_datos["rest"][i].append(1)
-            var_artificiales.append(len(diccionario_datos["rest"][i]))
-            var_basicas.append(len(diccionario_datos["rest"][i]))
+            var_artificiales.append(len(diccionario_datos["rest"][i])-1)
+            var_basicas.append(len(diccionario_datos["rest"][i])-1)
             diccionario_datos["rest"][i].append(resultado_rest)
 
             if  i-1 >= 0:
@@ -296,10 +299,16 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
         
         i+=1
     fun_ob_1[-1]= -fun_ob_1[-1]
+
+    while indice < len(var_basicas):
+        var_basicas[indice] += 1 
+        indice+=1
+    indice = 0
+    while indice < len(var_artificiales):
+        var_artificiales[indice] += 1 
+        indice+=1
+
     return [crear_matriz([fun_ob_1] + diccionario_datos["rest"], var_basicas , len(fun_ob_1)-1, es_maximizacion), var_artificiales]
-
-
-
 
 
 def acomodar_diccionario(diccionario_datos):
@@ -556,7 +565,7 @@ def obtener_solucion(nombre_archivo):
     
     if matriz.dos_fases:
         matriz.matriz = eliminar_artificiales(matriz.matriz,matriz.var_artificiales)
-        cambiar_fun_obj(matriz.matriz)        
+        cambiar_fun_obj(matriz.matriz,diccionario_datos,matriz.es_max)           
 
 def eliminar_artificiales(matriz,var_artificiales):
     i=1
@@ -570,14 +579,43 @@ def eliminar_artificiales(matriz,var_artificiales):
 
     return nueva_matriz
 
-def cambiar_fun_obj(matriz):
-    i = 0
+def cambiar_fun_obj(matriz,diccionario_datos,es_maximizacion):
     matriz = transpuesta(matriz)
     var_basicas = matriz[0][2:]
     matriz = transpuesta(matriz)
+    fun_ob_2 = []
     
-    print(var_basicas)
-    return 0
+    if es_maximizacion:
+        fun_ob_2 = ["U"] + diccionario_datos["fun_ob"]
+        matriz[1] = fun_ob_2
+    else:
+        i=0
+        while i < len(diccionario_datos["fun_ob"]):
+            fun_ob_2.append(-diccionario_datos["fun_ob"][i])
+            i+=1
+        fun_ob_2 = ["-U"] + fun_ob_2
+    
+    cantidad_0 = len(matriz[0]) - len (fun_ob_2)
+    fun_ob_2.extend([0]*cantidad_0)
+    matriz[1]= fun_ob_2
+
+    for variable in matriz[0]:
+        
+        if variable in var_basicas:
+            h = 0
+            while h < len(matriz):    
+                if variable == matriz[h][0]:
+                    fila_multiplicacion = matriz[h]
+            
+                    realizar_0 = matriz[1][matriz[0].index(variable)]
+                    i = 1
+
+                    for numero in matriz[1][1:]:
+
+                        matriz[1][i] = numero - (realizar_0 * fila_multiplicacion[i])
+                        i+=1
+                h+=1
+    return matriz
 
 
 def transpuesta(matriz):
