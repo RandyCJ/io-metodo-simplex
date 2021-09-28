@@ -507,7 +507,7 @@ def obtener_solucion(nombre_archivo):
     
     while(True):
         
-        if matriz.soluciones_multiples:
+        if matriz.soluciones_multiples and not(matriz.dual):
             print(matriz.datos_sol_optima())
         
         escribir_archivo(nombre_archivo,"\nIteracion " + str(num_iteracion))
@@ -520,7 +520,7 @@ def obtener_solucion(nombre_archivo):
             
         if matriz.verificar_optimalidad():
 
-            if matriz.dual: #degenerada, problema2 y acotada
+            if matriz.dual:
                 escribir_archivo(nombre_archivo,"\nIteracion Final Dual")
                 escribir_archivo(nombre_archivo, matriz.matriz_a_texto())
                 print("Solución dual:")

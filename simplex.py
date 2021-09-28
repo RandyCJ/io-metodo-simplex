@@ -255,7 +255,10 @@ class Matriz:
             E: N/A
             S: string con los datos de la solución
         """
-        str_matriz = "FEV: " + str(self.FEV)
+        if self.soluciones_multiples:
+            str_matriz = "BF: " + str(self.FEV)
+        else:
+            str_matriz = "FEV: " + str(self.FEV)
         if self.es_max:
             str_matriz += "\nU: " + str(self.U)
         else:
@@ -296,7 +299,7 @@ class Matriz:
             S: string con datos de una solución óptima
         """
         self.encontrar_FEV()
-        datos = "FEV: " + str(self.FEV)
+        datos = "BF: " + str(self.FEV)
         if self.es_max:
             datos += "\nU: " + str(self.U)
         else:
@@ -325,7 +328,7 @@ class Matriz:
         """
         fila = 2
 
-        while fila < len(self.matriz)-1:
+        while fila < len(self.matriz):
             if self.matriz[fila][-1] > 0 and self.matriz[fila][0] in self.var_artificiales:
                 return self.matriz[fila][0]
             fila += 1
