@@ -520,10 +520,15 @@ def obtener_solucion(nombre_archivo):
             
         if matriz.verificar_optimalidad():
 
-            if matriz.dual:
+            if matriz.dual: #degenerada, problema2 y acotada
                 escribir_archivo(nombre_archivo,"\nIteracion Final Dual")
                 escribir_archivo(nombre_archivo, matriz.matriz_a_texto())
+                print("Solución dual:")
+                print(matriz.datos_sol_optima())
+                print("\nSolución primal:")
                 print(datos_sol_optima_dual(matriz))
+                escribir_archivo(nombre_archivo,"\nSolución dual:")
+                escribir_archivo(nombre_archivo,matriz.datos_sol_optima())
                 escribir_archivo(nombre_archivo,"\nSolución primal:")
                 escribir_archivo(nombre_archivo,datos_sol_optima_dual(matriz))
                 no_factible = matriz.verificar_artificiales()
@@ -589,23 +594,23 @@ def encontrar_FEV_dual(matriz):
 
         matriz.U = matriz.matriz[1][-1]
         matriz.FEV = []
-        matriz.encontrar_basicas()
         columna = 1
-        tmp = []                              #Esto hay que revisarlo
+        tmp = []                        
 
         while columna < len(matriz.matriz[0][:-1]):
             if matriz.matriz[0][columna] in matriz.var_holgura:
                 tmp.append(matriz.matriz[1][columna])
             columna += 1
         matriz.FEV += tmp
-        
-        while len(matriz.FEV) < len(matriz.matriz[0][1:-1]):
-            matriz.FEV.append(0)
 
 def datos_sol_optima_dual(matriz):
 
         encontrar_FEV_dual(matriz)
-        datos = "FEV: " + str(matriz.FEV)
+        i = 0
+        datos = "BF: \n"
+        while i < len(matriz.FEV):
+            datos += "X" + str(i+1) + ": " + str(matriz.FEV[i]) + " "
+            i += 1
         if matriz.es_max:
             datos += "\nU: " + str(matriz.U)
         else:
