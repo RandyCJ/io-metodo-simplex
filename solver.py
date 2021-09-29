@@ -75,6 +75,10 @@ def definir_ecuaciones(diccionario_datos, CONST_M):
     return ([crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, diccionario_datos["num_var"] + diccionario_datos["num_rest"], True)],dual)
 
 def definir_ecuaciones_granm(diccionario_datos, CONST_M):
+    """ Convierte el diccionario de datos a las ecuaciones que se utilizaran para las tablas para el caso de gran m
+        E: Recibe el diccionario de datos con los datos que se recolectaron al leer el archivo
+        S: N/A
+    """
     indice = 0
     var_basicas = []
     indice_var_artificiales = []
@@ -82,17 +86,21 @@ def definir_ecuaciones_granm(diccionario_datos, CONST_M):
     i = 0
     es_maximizacion = True
 
+    #Se modifica según la simbología de las restricciones
     while i < len(diccionario_datos["simb_rest"]):
+        #En este caso sería igual que el simplex
         if diccionario_datos["simb_rest"][i] == "<=":
             diccionario_datos["fun_ob"].append(Rational(0))
             var_basicas.append(len(diccionario_datos["fun_ob"]))
 
+        #Agrega las M a la función objetivo y el 0 para la de exceso
         elif diccionario_datos["simb_rest"][i] == ">=":
             diccionario_datos["fun_ob"].append(Rational(0))
             diccionario_datos["num_rest"] += 1 
             if diccionario_datos["optm"] == "max":
                 diccionario_datos["fun_ob"].append(CONST_M)
                 indice = diccionario_datos["fun_ob"].index(CONST_M, indice+1, len(diccionario_datos["fun_ob"]))
+            
             else:
                 diccionario_datos["fun_ob"].append(-CONST_M)
                 indice = diccionario_datos["fun_ob"].index(-CONST_M, indice+1, len(diccionario_datos["fun_ob"]))
@@ -100,6 +108,7 @@ def definir_ecuaciones_granm(diccionario_datos, CONST_M):
             indice_var_artificiales.append(i)
             var_artificiales.append(indice + 1)
 
+        #Caso de sólo agregar la M
         else:
             if diccionario_datos["optm"] == "max":
                 diccionario_datos["fun_ob"].append(CONST_M)
@@ -112,6 +121,7 @@ def definir_ecuaciones_granm(diccionario_datos, CONST_M):
             var_artificiales.append(indice + 1)
         i += 1
     
+    #0 de valor de U
     diccionario_datos["fun_ob"].append(Rational(0))
 
     if diccionario_datos["optm"] == "min":
@@ -125,6 +135,7 @@ def definir_ecuaciones_granm(diccionario_datos, CONST_M):
     
     i = diccionario_datos["num_var"]
     j = 0
+    #Modifica las restricciones de acuerdo a simbología
     for rest in diccionario_datos["rest"]:
         if diccionario_datos["simb_rest"][j] == ">=":
             rest[i] = -1
@@ -135,6 +146,7 @@ def definir_ecuaciones_granm(diccionario_datos, CONST_M):
         j += 1
         i += 1
     
+    #Se aplican formulas para modificar la función objetivo de acuerdo a restricciones
     for i in indice_var_artificiales:
         j = 0
         while j < len(diccionario_datos["fun_ob"]):
@@ -333,22 +345,31 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
 
 
 def acomodar_diccionario(diccionario_datos):
+    """ Modifica el diccionari de primal a dual
+        E: Recibe el diccionario de datos con los datos que se recolectaron al leer el archivo
+        S: Retorna el diccionario de datos dual
+    """   
     nueva_fun_ob = []
     nueva_simb_rest = []
 
+    #Última posición de restricciones serán la nueva función objetivo
     for fila in diccionario_datos["rest"]:
         nueva_fun_ob += [fila[-1]]
 
     nuevas_rest = []
+    #Se hace la transpuesta de todo lo que está antes de la última posición
+    #Serán las nuevas restricciones
     for fila in diccionario_datos["rest"]:
         nuevas_rest += [fila[:-1]]
     nuevas_rest = transpuesta(nuevas_rest)
 
     i = 0
+    #La función objetivo son el nuevo final de restricciones
     while i < len(nuevas_rest):
         nuevas_rest[i] += [diccionario_datos["fun_ob"][i]]
         i += 1
 
+    #Caso especial donde solo el caso común se puede hacer para max o min
     if diccionario_datos["optm"] == "max":
         nueva_optm = "min"
         simbolo_restricciones = ">="
@@ -488,6 +509,10 @@ def limpiar_archivo_solucion(nombre_archivo):
         print("\nNo se pudo crear o abrir el archivo\n")
 
 def manejar_no_acotada(matriz, nombre_archivo):
+    """ Maneja los dos casos diferentes de no acotadas, normal y el dual
+            E: ruta del archivo y la matriz
+            S: N/A
+    """
     if matriz.dual:
         msj_acotada = 'La solución dual es no acotada en '
         msj_acotada += 'la columna ' + str(matriz.columna_pivote[1]+1)
@@ -504,6 +529,10 @@ def manejar_no_acotada(matriz, nombre_archivo):
     quit()
 
 def manejar_no_factible(matriz, nombre_archivo, var_no_factible):
+    """ Maneja los dos casos diferentes de no factibles, normal y el dual
+            E: ruta del archivo, la matriz y la variable que es no factible
+            S: N/A
+    """
     if matriz.dual:
         msj_no_factible = "La variable artificial " + var_no_factible + " es positiva "
         msj_no_factible += "esto hace la solución dual no factible"
@@ -571,12 +600,16 @@ def realizar_iteraciones(matriz, nombre_archivo):
     return matriz
 
 def obtener_solucion(nombre_archivo):
+    """ Se encarga de administrar el manejo de las demás funciones de acuerdo al método elegido
+            E: ruta del archivo
+            S: N/A
+    """
     CONST_M = Symbol('M')
     diccionario_datos = leer_archivo(nombre_archivo)
     tupla_tmp = definir_ecuaciones(diccionario_datos, CONST_M)
     matriz_inicial = tupla_tmp[0]
     matriz = Matriz(matriz_inicial[0])
-    matriz.dual = tupla_tmp[1]
+    matriz.dual = tupla_tmp[1]    #Indica si es dual o no
 
     if diccionario_datos["metodo"] == 1:
         matriz.definir_artificiales(matriz_inicial[1], CONST_M)
@@ -585,6 +618,7 @@ def obtener_solucion(nombre_archivo):
         matriz.definir_artificiales(matriz_inicial[1], CONST_M)
         matriz.dos_fases = True
     
+    #Saca variables de holgura y exceso para dual
     sacar_holgura(matriz, diccionario_datos)
     limpiar_archivo_solucion(nombre_archivo)
     matriz.nom_archivo = nombre_archivo
@@ -659,6 +693,10 @@ def cambiar_fun_obj(obj_matriz, diccionario_datos, es_maximizacion):
 
 
 def transpuesta(matriz):
+    """ Hace la transpuesta de una matriz
+        E: matriz
+        S: matriz transpuesta
+    """
     matriz_transpuesta = []
 
     for j in range(len(matriz[0])):
@@ -669,42 +707,59 @@ def transpuesta(matriz):
     return matriz_transpuesta
 
 def encontrar_FEV_dual(matriz):
+    """ Encuentra el FEV para el caso óptimo dual
+        E: matriz
+        S: N/A
+    """
 
-        matriz.U = matriz.matriz[1][-1]
-        matriz.FEV = []
-        columna = 1
-        tmp = []                        
+    #U es la misma
+    matriz.U = matriz.matriz[1][-1]
+    matriz.FEV = []
+    columna = 1
+    tmp = []                        
 
-        while columna < len(matriz.matriz[0][:-1]):
-            if matriz.matriz[0][columna] in matriz.var_holgura:
-                tmp.append(matriz.matriz[1][columna])
-            columna += 1
-        matriz.FEV += tmp
+    while columna < len(matriz.matriz[0][:-1]):
+        if matriz.matriz[0][columna] in matriz.var_holgura:
+            tmp.append(matriz.matriz[1][columna])
+        columna += 1
+    matriz.FEV += tmp
 
 def datos_sol_optima_dual(matriz):
+    """ Hace el mensaje para la solución óptima
+        E: matriz
+        S: string
+    """
 
-        encontrar_FEV_dual(matriz)
-        i = 0
-        datos = "BF: \n"
-        while i < len(matriz.FEV):
-            datos += "X" + str(i+1) + ": " + str(matriz.FEV[i]) + " "
-            i += 1
-        if matriz.es_max:
-            datos += "\nU: " + str(matriz.U)
-        else:
-            datos += "\nU: " + str(matriz.U*-1)
+    encontrar_FEV_dual(matriz)
+    i = 0
+    datos = "BF: \n"
+    #Sacamos cada valor y lo asignamos a la variable que correspondría
+    while i < len(matriz.FEV):
+        datos += "X" + str(i+1) + ": " + str(matriz.FEV[i]) + " "
+        i += 1
+    if matriz.es_max:
+        datos += "\nU: " + str(matriz.U)
+    else:
+        datos += "\nU: " + str(matriz.U*-1)
 
-        return datos
+    return datos
 
 def sacar_holgura(matriz, diccionario_datos):
-
-    i = diccionario_datos["num_var"]
+    """ Saca las variables de exceso y holgura y las guarda
+        E: matriz y el diccionario de datos
+        S: N/A
+    """
+    #Esto es para quitar las variables que trae el problema
+    i = diccionario_datos["num_var"] 
     candidatos_holgura = []
+    #Estos son los posibles candidatos
+    #Todos los no artificiales posibles después del indice
     while i < len(matriz.matriz[0][1:-1]):
         candidatos_holgura.append("X" + str(i+1))
         i += 1
 
     i = 0
+    #Sacamos los que fueron artificiales
     while i < len(matriz.matriz[0][1:]):
         if matriz.matriz[0][i] in candidatos_holgura:
             matriz.var_holgura.append(matriz.matriz[0][i])
