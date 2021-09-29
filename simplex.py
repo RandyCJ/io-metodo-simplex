@@ -28,6 +28,7 @@ class Matriz:
     CONST_M = 0
     var_artificiales = []
     es_max = True
+    fase_1 = False
 
     def __init__(self, matriz) -> None:
         self.matriz = matriz

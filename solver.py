@@ -548,11 +548,17 @@ def realizar_iteraciones(matriz, nombre_archivo):
 
     num_iteracion = 0
 
+    if matriz.fase_1:
+        print("Fase 1")
+        escribir_archivo(nombre_archivo,"Fase 1")
+    elif matriz.dos_fases:
+        print("Fase 2")
+        escribir_archivo(nombre_archivo,"Fase 2")
     while(True):
         
         if matriz.soluciones_multiples and not(matriz.dual):
             print(matriz.datos_sol_optima())
-        
+
         escribir_archivo(nombre_archivo,"\nIteracion " + str(num_iteracion))
         escribir_archivo(nombre_archivo,matriz.matriz_a_texto())
         try:
@@ -618,6 +624,7 @@ def obtener_solucion(nombre_archivo):
     if diccionario_datos["metodo"] == 2:
         matriz = definir_artificiales(matriz, matriz_inicial[1])
         matriz.dos_fases = True
+        matriz.fase_1 = True
     
     #Saca variables de holgura y exceso para dual
     sacar_holgura(matriz, diccionario_datos)
@@ -627,8 +634,9 @@ def obtener_solucion(nombre_archivo):
     matriz = realizar_iteraciones(matriz, nombre_archivo)
     
     if matriz.dos_fases:
-        matriz.matriz = eliminar_artificiales(matriz.matriz,matriz.var_artificiales)
+        matriz.matriz = modificar_artificiales(matriz.matriz,matriz.var_artificiales)
         matriz.matriz = cambiar_fun_obj(matriz,diccionario_datos,matriz.es_max)
+        matriz.fase_1 = False
         matriz = realizar_iteraciones(matriz, nombre_archivo)
 
 def definir_artificiales(obj_matriz, var_artificiales):
@@ -656,7 +664,7 @@ def definir_artificiales(obj_matriz, var_artificiales):
             i += 1
         return obj_matriz
 
-def eliminar_artificiales(matriz, var_artificiales):
+def modificar_artificiales(matriz, var_artificiales):
     """ Elimina las variables artificiales para la segunda fase
         E: matriz y variables artifiales
         S: matriz
@@ -666,8 +674,9 @@ def eliminar_artificiales(matriz, var_artificiales):
     
     while i < len(nueva_matriz)-1:
         if nueva_matriz[i][0] in var_artificiales:
-            nueva_matriz.pop(i)
-            i-=1
+            tmp = nueva_matriz[i][0]
+            nueva_matriz[i]=[0 for x in range(0, len(nueva_matriz[i]))]
+            nueva_matriz[i][0] = tmp   
         i+=1
 
     nueva_matriz = transpuesta(nueva_matriz)
