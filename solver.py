@@ -574,7 +574,7 @@ def realizar_iteraciones(matriz, nombre_archivo):
                 escribir_archivo(nombre_archivo,matriz.datos_sol_optima())
                 escribir_archivo(nombre_archivo,"\nSolución primal:")
                 escribir_archivo(nombre_archivo,datos_sol_optima_dual(matriz))
-                no_factible = matriz.verificar_artificiales()
+                no_factible = verificar_artificiales(matriz.matriz, matriz.var_artificiales)
                 if no_factible != 0:
                    manejar_no_factible(matriz,nombre_archivo, no_factible)
                 break
@@ -590,7 +590,7 @@ def realizar_iteraciones(matriz, nombre_archivo):
             escribir_archivo(nombre_archivo, matriz.matriz_a_texto())
             print(matriz.datos_sol_optima())
             escribir_archivo(nombre_archivo,matriz.datos_sol_optima())
-            no_factible = matriz.verificar_artificiales()
+            no_factible = verificar_artificiales(matriz.matriz, matriz.var_artificiales)
             if no_factible != 0:
                 manejar_no_factible(matriz, nombre_archivo, no_factible)
             break
@@ -612,10 +612,11 @@ def obtener_solucion(nombre_archivo):
     matriz.dual = tupla_tmp[1]    #Indica si es dual o no
 
     if diccionario_datos["metodo"] == 1:
-        matriz.definir_artificiales(matriz_inicial[1], CONST_M)
+        matriz = definir_artificiales(matriz, matriz_inicial[1])
+        matriz.CONST_M = CONST_M
 
     if diccionario_datos["metodo"] == 2:
-        matriz.definir_artificiales(matriz_inicial[1], CONST_M)
+        matriz = definir_artificiales(matriz, matriz_inicial[1])
         matriz.dos_fases = True
     
     #Saca variables de holgura y exceso para dual
@@ -629,6 +630,31 @@ def obtener_solucion(nombre_archivo):
         matriz.matriz = eliminar_artificiales(matriz.matriz,matriz.var_artificiales)
         matriz.matriz = cambiar_fun_obj(matriz,diccionario_datos,matriz.es_max)
         matriz = realizar_iteraciones(matriz, nombre_archivo)
+
+def definir_artificiales(obj_matriz, var_artificiales):
+        """ Define las variables artificiales en la matriz con A1, A2...
+            E: las variables artificiales en orden de X4, X6
+            S: N/A
+        """
+        artificiales_tmp = []
+        for n in var_artificiales:
+            artificiales_tmp.append("X" + str(n))
+
+        i = 1
+        # Primero cambia las variables en la primera fila
+        while i < len(obj_matriz.matriz[0])-1:
+            if obj_matriz.matriz[0][i] in artificiales_tmp:
+                obj_matriz.matriz[0][i] = "R" + obj_matriz.matriz[0][i][1:]
+                obj_matriz.var_artificiales.append(obj_matriz.matriz[0][i])
+            i += 1
+
+        #Ahora las cambia de la columna de variables basicas
+        i = 2
+        while i < len(obj_matriz.matriz):
+            if obj_matriz.matriz[i][0] in artificiales_tmp:
+                obj_matriz.matriz[i][0] = "R" + obj_matriz.matriz[i][0][1:]
+            i += 1
+        return obj_matriz
 
 def eliminar_artificiales(matriz, var_artificiales):
     """ Elimina las variables artificiales para la segunda fase
@@ -646,6 +672,20 @@ def eliminar_artificiales(matriz, var_artificiales):
 
     nueva_matriz = transpuesta(nueva_matriz)
     return nueva_matriz
+
+def verificar_artificiales(matriz, var_artificiales):
+        """ Verifica en la solucion óptima que las variables artificiales no sean positivas
+            que significaría que la solución es no factible
+            E: N/A
+            S: Retorna 0 si hay solucion factible, caso contrario retorna el X artificial que seria un string
+        """
+        fila = 2
+
+        while fila < len(matriz):
+            if matriz[fila][-1] > 0 and matriz[fila][0] in var_artificiales:
+                return matriz[fila][0]
+            fila += 1
+        return 0
 
 def cambiar_fun_obj(obj_matriz, diccionario_datos, es_maximizacion):
     """ Cambia la función objetivo para la segunda fase

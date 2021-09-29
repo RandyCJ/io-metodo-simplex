@@ -33,31 +33,6 @@ class Matriz:
         self.matriz = matriz
         if matriz[1][0] == "-U":
             self.es_max = False
-    
-    def definir_artificiales(self, var_artificiales, M):
-        """ Define las variables artificiales en la matriz con A1, A2...
-            E: las variables artificiales en orden de X4, X6.., la constante M
-            S: N/A
-        """
-        artificiales_tmp = []
-        for n in var_artificiales:
-            artificiales_tmp.append("X" + str(n))
-
-        i = 1
-        # Primero cambia las variables en la primera fila
-        while i < len(self.matriz[0])-1:
-            if self.matriz[0][i] in artificiales_tmp:
-                self.matriz[0][i] = "R" + self.matriz[0][i][1:]
-                self.var_artificiales.append(self.matriz[0][i])
-            i += 1
-
-        #Ahora las cambia de la columna de variables basicas
-        i = 2
-        while i < len(self.matriz):
-            if self.matriz[i][0] in artificiales_tmp:
-                self.matriz[i][0] = "R" + self.matriz[i][0][1:]
-            i += 1
-        self.CONST_M = M
 
     def encontrar_entrante(self):
         """ Encuentra cual es la columna con la variable entrante, esto viendo cual tiene el menor valor en U
@@ -319,17 +294,3 @@ class Matriz:
             i += 1
         datos += " son degeneradas, su resultado en común es " + str(round(self.var_degeneradas[0], 2))
         return datos
-
-    def verificar_artificiales(self):
-        """ Verifica en la solucion óptima que las variables artificiales no sean positivas
-            que significaría que la solución es no factible
-            E: N/A
-            S: Retorna 0 si hay solucion factible, caso contrario retorna el X artificial que seria un string
-        """
-        fila = 2
-
-        while fila < len(self.matriz):
-            if self.matriz[fila][-1] > 0 and self.matriz[fila][0] in self.var_artificiales:
-                return self.matriz[fila][0]
-            fila += 1
-        return 0
