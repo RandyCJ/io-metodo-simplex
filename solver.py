@@ -141,7 +141,12 @@ def definir_ecuaciones_granm(diccionario_datos, CONST_M):
             diccionario_datos["fun_ob"][j] = diccionario_datos["fun_ob"][j] + (-CONST_M * diccionario_datos["rest"][i][j])
             j += 1
     return [crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, len(diccionario_datos["fun_ob"])-1, es_maximizacion), var_artificiales]
+
 def definir_ecuaciones_primera_fase(diccionario_datos):     
+    """ Realiza las modificaciones de la función objetivo y restricciones en la primera fase
+        E: Recibe el diccionario de datos con los datos que se recolectaron al leer el archivo
+        S: N/A
+    """    
     var_basicas = []
     var_artificiales = []
     var_exceso = [] 
@@ -155,15 +160,23 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
     es_maximizacion = True
     fun_ob_1.extend([0] * len (diccionario_datos["rest"][0]))
     
+    #Se verifica si es maximización o minimización
     if diccionario_datos["optm"] == "min":
         es_maximizacion = False
 
+    """
+    Dependiendo el signo de cada restricción agregará variables básicas,
+    artificiales o de exceso, además de los 0 correspondientes para cada
+    una
+    """
     while i < len(diccionario_datos["simb_rest"]):
 
+        #Agrega una variable básica
         if diccionario_datos["simb_rest"][i] == "<=":
             
             cantidad = len(var_exceso) + len (var_artificiales)
 
+            #Agrega 0 extra
             while agregar_0 < cantidad :
                 resultado_rest = diccionario_datos["rest"][i][-1]
                 diccionario_datos["rest"][i].pop(-1)
@@ -171,14 +184,15 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
                 diccionario_datos["rest"][i].append(resultado_rest)
                 agregar_0 += 1 
             
+            #Modificación de las restricciones
             resultado_rest = diccionario_datos["rest"][i][-1]
             diccionario_datos["rest"][i].pop(-1)
             diccionario_datos["rest"][i].append(1)
             var_exceso.append(len(diccionario_datos["rest"][i])-1)
             var_basicas.append(len(diccionario_datos["rest"][i])-1)
-            
             diccionario_datos["rest"][i].append(resultado_rest)
             
+            #Agrega ceros a las restricciones anteriores
             if  i-1 >= 0:
                 for restriccion in diccionario_datos["rest"]:
                     if len (diccionario_datos["rest"][i]) > len (diccionario_datos["rest"][i-1]):
@@ -190,11 +204,12 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
             fun_ob_1.extend([0])
             agregar_0 = 0
             
-        
+        #Agrega una variable básica variable artificial y de exceso
         elif diccionario_datos["simb_rest"][i] == ">=":
             
             cantidad = len(var_exceso) + len (var_artificiales)
 
+            #Agrega 0 extra
             while agregar_0 < cantidad :
                 resultado_rest = diccionario_datos["rest"][i][-1]
                 diccionario_datos["rest"][i].pop(-1)
@@ -202,7 +217,7 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
                 diccionario_datos["rest"][i].append(resultado_rest)
                 agregar_0 += 1  
             
-            
+            #Modificación de las restricciones
             resultado_rest = diccionario_datos["rest"][i][-1]
             diccionario_datos["rest"][i].pop(-1)
             diccionario_datos["rest"][i].append(-1)
@@ -210,9 +225,9 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
             diccionario_datos["rest"][i].append(1)
             var_artificiales.append(len(diccionario_datos["rest"][i])-1)
             var_basicas.append(len(diccionario_datos["rest"][i])-1)
-
             diccionario_datos["rest"][i].append(resultado_rest)
 
+            #Agrega ceros a las restricciones anteriores
             if  i-1 >= 0:
                 for restriccion in diccionario_datos["rest"]:
                     if len (diccionario_datos["rest"][i]) > len (diccionario_datos["rest"][i-1]):
@@ -221,16 +236,16 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
                         restriccion.extend([0] * extra_ceros)
                         restriccion.append(resultado_rest)
             
-            
+            #Realiza los cambios de la función objetivo para la primera fase
             resultado_rest = fun_ob_1.pop(-1) + diccionario_datos["rest"][i][-1]
             fun_ob_1.extend([0] * 2)
-        
+
             while variable <  len(diccionario_datos["rest"][i])-1:
+                
                 if variable in var_artificiales:
                     fun_ob_1[variable] = 0
                 
                 elif variable in var_exceso:
-                    #print(variable)
                     fun_ob_1[variable] = 1
 
                 elif diccionario_datos["rest"][i][variable] >= 0:
@@ -240,16 +255,18 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
                     fun_ob_1[variable] = fun_ob_1[variable] + (diccionario_datos["rest"][i][variable]) 
                 
                 variable += 1
+            
             fun_ob_1.append(resultado_rest)
             agregar_0 = 0
             variable = 0
             rest_artificiales.append(i)
             
-            
+        #Agrega una variable básica y variable artificial    
         elif diccionario_datos["simb_rest"][i] == "=":
             
             cantidad = len(var_exceso) + len (var_artificiales)
 
+            #Agrega 0 extra
             while agregar_0 < cantidad :
                 resultado_rest = diccionario_datos["rest"][i][-1]
                 diccionario_datos["rest"][i].pop(-1)
@@ -257,7 +274,7 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
                 diccionario_datos["rest"][i].append(resultado_rest)
                 agregar_0 += 1  
             
-            
+            #Modificación de las restricciones
             resultado_rest = diccionario_datos["rest"][i][-1]
             diccionario_datos["rest"][i].pop(-1)
             diccionario_datos["rest"][i].append(1)
@@ -265,6 +282,7 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
             var_basicas.append(len(diccionario_datos["rest"][i])-1)
             diccionario_datos["rest"][i].append(resultado_rest)
 
+            #Agrega ceros a las restricciones anteriores
             if  i-1 >= 0:
                 for restriccion in diccionario_datos["rest"]:
                     if len (diccionario_datos["rest"][i]) > len (diccionario_datos["rest"][i-1]):
@@ -272,9 +290,8 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
                         resultado_rest= restriccion.pop(-1)
                         restriccion.extend([0] * extra_ceros)
                         restriccion.append(resultado_rest)
-                
-                
-
+    
+            #Realiza los cambios de la función objetivo para la primera fase
             resultado_rest = fun_ob_1.pop(-1) + diccionario_datos["rest"][i][-1]
             fun_ob_1.extend([0])
         
@@ -292,14 +309,18 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
                     fun_ob_1[variable] = fun_ob_1[variable] + (diccionario_datos["rest"][i][variable]) 
             
                 variable += 1
+            
             fun_ob_1.append(resultado_rest)
             agregar_0 = 0
             variable = 0
             rest_artificiales.append(i)
         
         i+=1
+    
+    #Coloca el resultado negativamente en la función objetivo
     fun_ob_1[-1]= -fun_ob_1[-1]
-
+    
+    #Recoloca indices para las variables
     while indice < len(var_basicas):
         var_basicas[indice] += 1 
         indice+=1
@@ -576,6 +597,10 @@ def obtener_solucion(nombre_archivo):
         matriz = realizar_iteraciones(matriz, nombre_archivo)
 
 def eliminar_artificiales(matriz, var_artificiales):
+    """ Elimina las variables artificiales para la segunda fase
+        E: matriz y variables artifiales
+        S: matriz
+    """
     i=1
     nueva_matriz = transpuesta(matriz)
     
@@ -589,6 +614,10 @@ def eliminar_artificiales(matriz, var_artificiales):
     return nueva_matriz
 
 def cambiar_fun_obj(obj_matriz, diccionario_datos, es_maximizacion):
+    """ Cambia la función objetivo para la segunda fase
+        E: matriz , diccionario de datos(diccionario) y es_maximización(booleano)
+        S: matriz
+    """
     matriz = obj_matriz.matriz
     matriz = transpuesta(matriz)
     var_basicas = matriz[0][2:]
