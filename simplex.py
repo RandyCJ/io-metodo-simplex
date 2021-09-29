@@ -15,7 +15,7 @@ class Matriz:
     fila_pivote = () # Contiene la posición de la variable básica saliente y la misma variable saliente de una iteración
     indice_pivote = ()
     pivote = 1
-    acotada = False
+    no_acotada = False
     degenerada = False
     var_degeneradas = [] # Contiene las variables que son degeneradas si existen
     var_holgura = [] 
@@ -60,16 +60,16 @@ class Matriz:
         lista_divisiones = []
         lista_degenerados = []
         self.var_degeneradas = []
-        self.acotada = True
+        self.no_acotada = True
         vb_saliente = ""
 
         for i in self.matriz[2:]:
             if i[self.columna_pivote[1]] > 0 and i[-1] >= 0:
-                self.acotada = False
+                self.no_acotada = False
                 lista_divisiones += [(i[-1]/i[self.columna_pivote[1]], i[0])]
                 lista_degenerados += [i[-1]/i[self.columna_pivote[1]]] #Guardamos todos los resultados para al final ver si hay degenerados
 
-        if self.acotada: # Si ninguna division es valida sería no acotada
+        if self.no_acotada: # Si ninguna division es valida sería no acotada
             raise Exception("No acotada")
 
         lista_divisiones.sort()
