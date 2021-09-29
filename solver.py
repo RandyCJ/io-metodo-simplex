@@ -230,7 +230,7 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
                     fun_ob_1[variable] = 0
                 
                 elif variable in var_exceso:
-                    print(variable)
+                    #print(variable)
                     fun_ob_1[variable] = 1
 
                 elif diccionario_datos["rest"][i][variable] >= 0:
@@ -494,26 +494,10 @@ def manejar_no_factible(matriz, nombre_archivo, var_no_factible):
     escribir_archivo(nombre_archivo, "\n" + msj_no_factible)
     print(msj_no_factible)
 
-def obtener_solucion(nombre_archivo):
-    CONST_M = Symbol('M')
+def realizar_iteraciones(matriz, nombre_archivo):
+
     num_iteracion = 0
-    diccionario_datos = leer_archivo(nombre_archivo)
-    tupla_tmp = definir_ecuaciones(diccionario_datos, CONST_M)
-    matriz_inicial = tupla_tmp[0]
-    matriz = Matriz(matriz_inicial[0])
-    matriz.dual = tupla_tmp[1]
 
-    if diccionario_datos["metodo"] == 1:
-        matriz.definir_artificiales(matriz_inicial[1], CONST_M)
-
-    if diccionario_datos["metodo"] == 2:
-        matriz.definir_artificiales(matriz_inicial[1], CONST_M)
-        matriz.dos_fases = True
-    
-    sacar_holgura(matriz, diccionario_datos)
-    limpiar_archivo_solucion(nombre_archivo)
-    matriz.nom_archivo = nombre_archivo
-    
     while(True):
         
         if matriz.soluciones_multiples and not(matriz.dual):
@@ -562,24 +546,50 @@ def obtener_solucion(nombre_archivo):
             break
 
         num_iteracion += 1
+
+    return matriz
+
+def obtener_solucion(nombre_archivo):
+    CONST_M = Symbol('M')
+    diccionario_datos = leer_archivo(nombre_archivo)
+    tupla_tmp = definir_ecuaciones(diccionario_datos, CONST_M)
+    matriz_inicial = tupla_tmp[0]
+    matriz = Matriz(matriz_inicial[0])
+    matriz.dual = tupla_tmp[1]
+
+    if diccionario_datos["metodo"] == 1:
+        matriz.definir_artificiales(matriz_inicial[1], CONST_M)
+
+    if diccionario_datos["metodo"] == 2:
+        matriz.definir_artificiales(matriz_inicial[1], CONST_M)
+        matriz.dos_fases = True
+    
+    sacar_holgura(matriz, diccionario_datos)
+    limpiar_archivo_solucion(nombre_archivo)
+    matriz.nom_archivo = nombre_archivo
+    
+    matriz = realizar_iteraciones(matriz, nombre_archivo)
     
     if matriz.dos_fases:
         matriz.matriz = eliminar_artificiales(matriz.matriz,matriz.var_artificiales)
-        cambiar_fun_obj(matriz.matriz,diccionario_datos,matriz.es_max)           
+        matriz.matriz = cambiar_fun_obj(matriz,diccionario_datos,matriz.es_max)
+        matriz = realizar_iteraciones(matriz, nombre_archivo)
 
-def eliminar_artificiales(matriz,var_artificiales):
+def eliminar_artificiales(matriz, var_artificiales):
     i=1
     nueva_matriz = transpuesta(matriz)
-    for fila in nueva_matriz:
-        
-        if fila[0] in var_artificiales:
-            nueva_matriz.pop(nueva_matriz.index(fila))
+    
+    while i < len(nueva_matriz)-1:
+        if nueva_matriz[i][0] in var_artificiales:
+            nueva_matriz.pop(i)
+            i-=1
+        i+=1
 
     nueva_matriz = transpuesta(nueva_matriz)
-
     return nueva_matriz
 
-def cambiar_fun_obj(matriz,diccionario_datos,es_maximizacion):
+def cambiar_fun_obj(obj_matriz, diccionario_datos, es_maximizacion):
+    matriz = obj_matriz.matriz
     matriz = transpuesta(matriz)
     var_basicas = matriz[0][2:]
     matriz = transpuesta(matriz)
@@ -599,22 +609,23 @@ def cambiar_fun_obj(matriz,diccionario_datos,es_maximizacion):
     fun_ob_2.extend([0]*cantidad_0)
     matriz[1]= fun_ob_2
 
-    for variable in matriz[0]:
-        
-        if variable in var_basicas:
-            h = 0
-            while h < len(matriz):    
-                if variable == matriz[h][0]:
-                    fila_multiplicacion = matriz[h]
+    if obj_matriz.verificar_optimalidad():
+        for variable in matriz[0]:
             
-                    realizar_0 = matriz[1][matriz[0].index(variable)]
-                    i = 1
+            if variable in var_basicas:
+                h = 0
+                while h < len(matriz):    
+                    if variable == matriz[h][0]:
+                        fila_multiplicacion = matriz[h]
+                
+                        realizar_0 = matriz[1][matriz[0].index(variable)]
+                        i = 1
 
-                    for numero in matriz[1][1:]:
+                        for numero in matriz[1][1:]:
 
-                        matriz[1][i] = numero - (realizar_0 * fila_multiplicacion[i])
-                        i+=1
-                h+=1
+                            matriz[1][i] = numero - (realizar_0 * fila_multiplicacion[i])
+                            i+=1
+                    h+=1
     return matriz
 
 
