@@ -1,9 +1,6 @@
 import sys 
 import os
-import sympy
-from iteration_utilities import duplicates
 from sympy import *
-from sympy.core.rules import Transform
 from simplex import Matriz
 
 def crear_matriz(matriz, variables_basicas, cant_variables, es_maximizacion):
@@ -92,24 +89,12 @@ def definir_ecuaciones_granm(diccionario_datos, CONST_M):
         if diccionario_datos["simb_rest"][i] == "<=":
             diccionario_datos["fun_ob"].append(Rational(0))
             var_basicas.append(len(diccionario_datos["fun_ob"]))
-
-        #Agrega las M a la función objetivo y el 0 para la de exceso
-        elif diccionario_datos["simb_rest"][i] == ">=":
-            diccionario_datos["fun_ob"].append(Rational(0))
-            diccionario_datos["num_rest"] += 1 
-            if diccionario_datos["optm"] == "max":
-                diccionario_datos["fun_ob"].append(CONST_M)
-                indice = diccionario_datos["fun_ob"].index(CONST_M, indice+1, len(diccionario_datos["fun_ob"]))
-            
-            else:
-                diccionario_datos["fun_ob"].append(-CONST_M)
-                indice = diccionario_datos["fun_ob"].index(-CONST_M, indice+1, len(diccionario_datos["fun_ob"]))
-            var_basicas.append(indice + 1)
-            indice_var_artificiales.append(i)
-            var_artificiales.append(indice + 1)
-
-        #Caso de sólo agregar la M
+        #Este caso es para >= y =, como ambos tiene variables artificiales, solo se verifica que sea >= para agregarle de exceso
         else:
+            if diccionario_datos["simb_rest"][i] == ">=": #Agrega la variable de exceso si es >=
+                diccionario_datos["fun_ob"].append(Rational(0))
+                diccionario_datos["num_rest"] += 1
+            #No importa si es >= o =, se le agrega las M a la función objetivo de la misma forma
             if diccionario_datos["optm"] == "max":
                 diccionario_datos["fun_ob"].append(CONST_M)
                 indice = diccionario_datos["fun_ob"].index(CONST_M, indice+1, len(diccionario_datos["fun_ob"]))
@@ -135,6 +120,7 @@ def definir_ecuaciones_granm(diccionario_datos, CONST_M):
     
     i = diccionario_datos["num_var"]
     j = 0
+
     #Modifica las restricciones de acuerdo a simbología
     for rest in diccionario_datos["rest"]:
         if diccionario_datos["simb_rest"][j] == ">=":
@@ -152,23 +138,96 @@ def definir_ecuaciones_granm(diccionario_datos, CONST_M):
         while j < len(diccionario_datos["fun_ob"]):
             diccionario_datos["fun_ob"][j] = diccionario_datos["fun_ob"][j] + (-CONST_M * diccionario_datos["rest"][i][j])
             j += 1
+
     return [crear_matriz([diccionario_datos["fun_ob"]] + diccionario_datos["rest"], var_basicas, len(diccionario_datos["fun_ob"])-1, es_maximizacion), var_artificiales]
+
+def agregar_ceros(cantidad, diccionario_datos, i):
+    """ Agrega ceros a las restricciones anteriores cada vez que se agrega una variable nueva
+        E: Recibe la cantidad de variables, el diccionario de datos y el indice recorrido
+        S: retorna el diccionario de datos modificado con los ceros agregados a las restricciones
+    """
+    agregar_0 = 0    
+    while agregar_0 < cantidad :
+        resultado_rest = diccionario_datos["rest"][i][-1]
+        diccionario_datos["rest"][i].pop(-1)
+        diccionario_datos["rest"][i].append(0)
+        diccionario_datos["rest"][i].append(resultado_rest)
+        agregar_0 += 1
+    
+    return diccionario_datos
+
+def modificar_restricciones(diccionario_datos, simb_rest, i):
+    """ Modifica las restricciones, agregandole los ceros y unos dependiendo del simbolo de la restricción
+        E: Recibe el diccionario de datos, el símbolo de la restricción actual y el indice del recorrido
+        S: una lista con el diccionario de datos modificado, y listas con las variables de exceso, artificiales y basicas
+    """
+    var_basicas = []
+    var_exceso = []
+    var_artificiales = []
+
+    #Modificación de las restricciones
+    resultado_rest = diccionario_datos["rest"][i][-1]
+    diccionario_datos["rest"][i].pop(-1)
+    if simb_rest == ">=":
+        diccionario_datos["rest"][i].append(-1)
+        var_exceso.append(len(diccionario_datos["rest"][i])-1)
+        diccionario_datos["rest"][i].append(1)
+        var_artificiales.append(len(diccionario_datos["rest"][i])-1)
+    elif simb_rest == "<=":
+        diccionario_datos["rest"][i].append(1)
+        var_exceso.append(len(diccionario_datos["rest"][i])-1)
+    else: # =
+        diccionario_datos["rest"][i].append(1)#ESTA CAMBIA con >=
+        var_artificiales.append(len(diccionario_datos["rest"][i])-1)
+    var_basicas.append(len(diccionario_datos["rest"][i])-1)
+    diccionario_datos["rest"][i].append(resultado_rest)
+
+    #Agrega ceros a las restricciones anteriores
+    if  i-1 >= 0:
+        for restriccion in diccionario_datos["rest"]:
+            if len (diccionario_datos["rest"][i]) > len (diccionario_datos["rest"][i-1]):
+                extra_ceros = len (diccionario_datos["rest"][i]) - len (diccionario_datos["rest"][i-1])
+                resultado_rest = restriccion.pop(-1)
+                restriccion.extend([0] * extra_ceros)
+                restriccion.append(resultado_rest)
+
+    return [diccionario_datos, var_basicas, var_exceso, var_artificiales]
+
+def modificar_fun_objetivo(diccionario_datos, fun_obj, var_exceso, var_artificiales, i):
+    """ Realiza las modificaciones de la función objetivo para la primera fase
+        E: Recibe el diccionario de datos, la funcion objetivo sin editar, lista con las variables de exceso y artificiales, y el indice
+        S: función objetivo ya modificada
+    """
+    variable = 0
+    while variable <  len(diccionario_datos["rest"][i])-1:
+                
+        if variable in var_artificiales:
+            fun_obj[variable] = 0
+        
+        elif variable in var_exceso:
+            fun_obj[variable] = 1
+
+        elif diccionario_datos["rest"][i][variable] >= 0:
+            fun_obj[variable] = fun_obj[variable] - (diccionario_datos["rest"][i][variable])    
+        
+        elif diccionario_datos["rest"][i][variable] < 0:
+            fun_obj[variable] = fun_obj[variable] + (diccionario_datos["rest"][i][variable]) 
+
+        variable += 1
+
+    return fun_obj
 
 def definir_ecuaciones_primera_fase(diccionario_datos):     
     """ Realiza las modificaciones de la función objetivo y restricciones en la primera fase
         E: Recibe el diccionario de datos con los datos que se recolectaron al leer el archivo
         S: N/A
-    """    
+    """
     var_basicas = []
     var_artificiales = []
     var_exceso = [] 
     fun_ob_1 = []
     rest_artificiales = []
     resultado_rest = 0
-    i = 0
-    indice = 0
-    agregar_0 = 0
-    variable = 0
     es_maximizacion = True
     fun_ob_1.extend([0] * len (diccionario_datos["rest"][0]))
     
@@ -181,171 +240,50 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
     artificiales o de exceso, además de los 0 correspondientes para cada
     una
     """
+    i = 0
     while i < len(diccionario_datos["simb_rest"]):
 
-        #Agrega una variable básica
+        cantidad = len(var_exceso) + len (var_artificiales)
+        diccionario_datos = agregar_ceros(cantidad, diccionario_datos, i) #se agregan ceros
+        
+        #Modificación de las restricciones, agrega variables de exceso, basicas y artificiales a las restricciones
+        datos_modificados = modificar_restricciones(diccionario_datos, diccionario_datos["simb_rest"][i], i) #envia el simbolo de la restriccion
+        diccionario_datos = datos_modificados[0]
+        var_basicas += datos_modificados[1]
+        var_exceso += datos_modificados[2]
+        var_artificiales += datos_modificados[3]
+
+        #termina de modificar las restricciones y funcion objetivo
         if diccionario_datos["simb_rest"][i] == "<=":
-            
-            cantidad = len(var_exceso) + len (var_artificiales)
-
-            #Agrega 0 extra
-            while agregar_0 < cantidad :
-                resultado_rest = diccionario_datos["rest"][i][-1]
-                diccionario_datos["rest"][i].pop(-1)
-                diccionario_datos["rest"][i].append(0)
-                diccionario_datos["rest"][i].append(resultado_rest)
-                agregar_0 += 1 
-            
-            #Modificación de las restricciones
-            resultado_rest = diccionario_datos["rest"][i][-1]
-            diccionario_datos["rest"][i].pop(-1)
-            diccionario_datos["rest"][i].append(1)
-            var_exceso.append(len(diccionario_datos["rest"][i])-1)
-            var_basicas.append(len(diccionario_datos["rest"][i])-1)
-            diccionario_datos["rest"][i].append(resultado_rest)
-            
-            #Agrega ceros a las restricciones anteriores
-            if  i-1 >= 0:
-                for restriccion in diccionario_datos["rest"]:
-                    if len (diccionario_datos["rest"][i]) > len (diccionario_datos["rest"][i-1]):
-                        extra_ceros = len (diccionario_datos["rest"][i]) - len (diccionario_datos["rest"][i-1])
-                        resultado_rest= restriccion.pop(-1)
-                        restriccion.extend([0] * extra_ceros)
-                        restriccion.append(resultado_rest)
-            
             fun_ob_1.extend([0])
-            agregar_0 = 0
-            
-        #Agrega una variable básica variable artificial y de exceso
-        elif diccionario_datos["simb_rest"][i] == ">=":
-            
-            cantidad = len(var_exceso) + len (var_artificiales)
-
-            #Agrega 0 extra
-            while agregar_0 < cantidad :
-                resultado_rest = diccionario_datos["rest"][i][-1]
-                diccionario_datos["rest"][i].pop(-1)
-                diccionario_datos["rest"][i].append(0)
-                diccionario_datos["rest"][i].append(resultado_rest)
-                agregar_0 += 1  
-            
-            #Modificación de las restricciones
-            resultado_rest = diccionario_datos["rest"][i][-1]
-            diccionario_datos["rest"][i].pop(-1)
-            diccionario_datos["rest"][i].append(-1)
-            var_exceso.append(len(diccionario_datos["rest"][i])-1)
-            diccionario_datos["rest"][i].append(1)
-            var_artificiales.append(len(diccionario_datos["rest"][i])-1)
-            var_basicas.append(len(diccionario_datos["rest"][i])-1)
-            diccionario_datos["rest"][i].append(resultado_rest)
-
-            #Agrega ceros a las restricciones anteriores
-            if  i-1 >= 0:
-                for restriccion in diccionario_datos["rest"]:
-                    if len (diccionario_datos["rest"][i]) > len (diccionario_datos["rest"][i-1]):
-                        extra_ceros = len (diccionario_datos["rest"][i]) - len (diccionario_datos["rest"][i-1])
-                        resultado_rest= restriccion.pop(-1)
-                        restriccion.extend([0] * extra_ceros)
-                        restriccion.append(resultado_rest)
-            
-            #Realiza los cambios de la función objetivo para la primera fase
+        else:
             resultado_rest = fun_ob_1.pop(-1) + diccionario_datos["rest"][i][-1]
-            fun_ob_1.extend([0] * 2)
-
-            while variable <  len(diccionario_datos["rest"][i])-1:
-                
-                if variable in var_artificiales:
-                    fun_ob_1[variable] = 0
-                
-                elif variable in var_exceso:
-                    fun_ob_1[variable] = 1
-
-                elif diccionario_datos["rest"][i][variable] >= 0:
-                    fun_ob_1[variable] = fun_ob_1[variable] - (diccionario_datos["rest"][i][variable])    
-                
-                elif diccionario_datos["rest"][i][variable] < 0:
-                    fun_ob_1[variable] = fun_ob_1[variable] + (diccionario_datos["rest"][i][variable]) 
-                
-                variable += 1
-            
+            if diccionario_datos["simb_rest"][i] == ">=":
+                fun_ob_1.extend([0] * 2)
+            elif diccionario_datos["simb_rest"][i] == "=":
+                fun_ob_1.extend([0])
+            fun_ob_1 = modificar_fun_objetivo(diccionario_datos, fun_ob_1, var_exceso, var_artificiales, i)
             fun_ob_1.append(resultado_rest)
-            agregar_0 = 0
-            variable = 0
             rest_artificiales.append(i)
-            
-        #Agrega una variable básica y variable artificial    
-        elif diccionario_datos["simb_rest"][i] == "=":
-            
-            cantidad = len(var_exceso) + len (var_artificiales)
-
-            #Agrega 0 extra
-            while agregar_0 < cantidad :
-                resultado_rest = diccionario_datos["rest"][i][-1]
-                diccionario_datos["rest"][i].pop(-1)
-                diccionario_datos["rest"][i].append(0)
-                diccionario_datos["rest"][i].append(resultado_rest)
-                agregar_0 += 1  
-            
-            #Modificación de las restricciones
-            resultado_rest = diccionario_datos["rest"][i][-1]
-            diccionario_datos["rest"][i].pop(-1)
-            diccionario_datos["rest"][i].append(1)
-            var_artificiales.append(len(diccionario_datos["rest"][i])-1)
-            var_basicas.append(len(diccionario_datos["rest"][i])-1)
-            diccionario_datos["rest"][i].append(resultado_rest)
-
-            #Agrega ceros a las restricciones anteriores
-            if  i-1 >= 0:
-                for restriccion in diccionario_datos["rest"]:
-                    if len (diccionario_datos["rest"][i]) > len (diccionario_datos["rest"][i-1]):
-                        extra_ceros = len (diccionario_datos["rest"][i]) - len (diccionario_datos["rest"][i-1])
-                        resultado_rest= restriccion.pop(-1)
-                        restriccion.extend([0] * extra_ceros)
-                        restriccion.append(resultado_rest)
-    
-            #Realiza los cambios de la función objetivo para la primera fase
-            resultado_rest = fun_ob_1.pop(-1) + diccionario_datos["rest"][i][-1]
-            fun_ob_1.extend([0])
-        
-            while variable <  len(diccionario_datos["rest"][i])-1:
-                if variable in var_artificiales:
-                    fun_ob_1[variable] = 0
-                
-                elif variable in var_exceso:
-                    fun_ob_1[variable] = 1
-
-                elif diccionario_datos["rest"][i][variable] >= 0:
-                    fun_ob_1[variable] = fun_ob_1[variable] - (diccionario_datos["rest"][i][variable])    
-                
-                elif diccionario_datos["rest"][i][variable] < 0:
-                    fun_ob_1[variable] = fun_ob_1[variable] + (diccionario_datos["rest"][i][variable]) 
-            
-                variable += 1
-            
-            fun_ob_1.append(resultado_rest)
-            agregar_0 = 0
-            variable = 0
-            rest_artificiales.append(i)
-        
         i+=1
     
     #Coloca el resultado negativamente en la función objetivo
-    fun_ob_1[-1]= -fun_ob_1[-1]
+    fun_ob_1[-1] = -fun_ob_1[-1]
     
     #Recoloca indices para las variables
+    indice = 0
     while indice < len(var_basicas):
         var_basicas[indice] += 1 
-        indice+=1
+        indice += 1
     indice = 0
     while indice < len(var_artificiales):
         var_artificiales[indice] += 1 
-        indice+=1
+        indice += 1
 
     return [crear_matriz([fun_ob_1] + diccionario_datos["rest"], var_basicas , len(fun_ob_1)-1, es_maximizacion), var_artificiales]
 
-
 def acomodar_diccionario(diccionario_datos):
-    """ Modifica el diccionari de primal a dual
+    """ Modifica el diccionaro de primal a dual
         E: Recibe el diccionario de datos con los datos que se recolectaron al leer el archivo
         S: Retorna el diccionario de datos dual
     """   
@@ -549,26 +487,23 @@ def realizar_iteraciones(matriz, nombre_archivo):
     num_iteracion = 0
 
     if matriz.fase_1:
-        print("Fase 1")
         escribir_archivo(nombre_archivo,"Fase 1")
     elif matriz.dos_fases:
-        print("Fase 2")
         escribir_archivo(nombre_archivo,"Fase 2")
+    
     while(True):
-        
         if matriz.soluciones_multiples and not(matriz.dual):
             print(matriz.datos_sol_optima())
 
         escribir_archivo(nombre_archivo,"\nIteracion " + str(num_iteracion))
-        escribir_archivo(nombre_archivo,matriz.matriz_a_texto())
+        escribir_archivo(nombre_archivo, matriz.matriz_a_texto())
         try:
             matriz.iterar()
         except Exception as e:
             manejar_no_acotada(matriz, nombre_archivo)
-        escribir_archivo(nombre_archivo,matriz.datos_solucion())
+        escribir_archivo(nombre_archivo, matriz.datos_solucion())
             
         if matriz.verificar_optimalidad():
-
             if matriz.dual:
                 escribir_archivo(nombre_archivo,"\nIteracion Final Dual")
                 escribir_archivo(nombre_archivo, matriz.matriz_a_texto())
@@ -594,8 +529,9 @@ def realizar_iteraciones(matriz, nombre_archivo):
                 escribir_archivo(nombre_archivo,"\nIteracion Final")
 
             escribir_archivo(nombre_archivo, matriz.matriz_a_texto())
-            print(matriz.datos_sol_optima())
-            escribir_archivo(nombre_archivo,matriz.datos_sol_optima())
+            if not(matriz.fase_1): #Si es la fase 1 de un problema de dos fases, no se imprime
+                print(matriz.datos_sol_optima())
+            escribir_archivo(nombre_archivo, matriz.datos_sol_optima())
             no_factible = verificar_artificiales(matriz.matriz, matriz.var_artificiales)
             if no_factible != 0:
                 manejar_no_factible(matriz, nombre_archivo, no_factible)
@@ -629,7 +565,6 @@ def obtener_solucion(nombre_archivo):
     #Saca variables de holgura y exceso para dual
     sacar_holgura(matriz, diccionario_datos)
     limpiar_archivo_solucion(nombre_archivo)
-    matriz.nom_archivo = nombre_archivo
     
     matriz = realizar_iteraciones(matriz, nombre_archivo)
     
@@ -640,7 +575,7 @@ def obtener_solucion(nombre_archivo):
         matriz = realizar_iteraciones(matriz, nombre_archivo)
 
 def definir_artificiales(obj_matriz, var_artificiales):
-        """ Define las variables artificiales en la matriz con A1, A2...
+        """ Define las variables artificiales en la matriz con R1, R2...
             E: las variables artificiales en orden de X4, X6
             S: N/A
         """

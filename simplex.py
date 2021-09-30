@@ -1,7 +1,6 @@
 import sympy
 from iteration_utilities import duplicates
 from sympy import *
-from sympy.core.rules import Transform
 
 class Matriz:
 
@@ -20,7 +19,6 @@ class Matriz:
     var_degeneradas = [] # Contiene las variables que son degeneradas si existen
     var_holgura = [] 
     soluciones_multiples = False
-    nom_archivo = ""
     U = 0
     FEV = []
     dual = False
@@ -168,7 +166,7 @@ class Matriz:
             i += 1
         self.matriz[self.fila_pivote[1]][self.columna_pivote[1]] = Rational(1)
 
-    def iteracion(self):
+    def gauss(self):
         """ Hace las operaciones en cada fila para convertir la columna pivote en ceros
             E: N/A
             S: N/A
@@ -193,7 +191,7 @@ class Matriz:
         self.encontrar_saliente()
         self.obtener_columna_pivote()
         self.modificar_linea_pivote()
-        self.iteracion()
+        self.gauss()
 
     def verificar_optimalidad(self):
         """ Verifica en la Fila U que no hayan negativos
