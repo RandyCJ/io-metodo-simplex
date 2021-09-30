@@ -193,7 +193,7 @@ def modificar_restricciones(diccionario_datos, simb_rest, i):
 
     return [diccionario_datos, var_basicas, var_exceso, var_artificiales]
 
-def modificar_fun_objetivo(diccionario_datos, fun_obj, var_exceso, var_artificiales, i):
+def modificar_fun_objetivo_fase_1(diccionario_datos, fun_obj, var_exceso, var_artificiales, i):
     """ Realiza las modificaciones de la función objetivo para la primera fase
         E: Recibe el diccionario de datos, la funcion objetivo sin editar, lista con las variables de exceso y artificiales, y el indice
         S: función objetivo ya modificada
@@ -262,7 +262,7 @@ def definir_ecuaciones_primera_fase(diccionario_datos):
                 fun_ob_1.extend([0] * 2)
             elif diccionario_datos["simb_rest"][i] == "=":
                 fun_ob_1.extend([0])
-            fun_ob_1 = modificar_fun_objetivo(diccionario_datos, fun_ob_1, var_exceso, var_artificiales, i)
+            fun_ob_1 = modificar_fun_objetivo_fase_1(diccionario_datos, fun_ob_1, var_exceso, var_artificiales, i)
             fun_ob_1.append(resultado_rest)
             rest_artificiales.append(i)
         i+=1
@@ -479,8 +479,13 @@ def manejar_no_factible(matriz, nombre_archivo, var_no_factible):
     else:
         msj_no_factible = "La variable artificial " + var_no_factible + " es positiva\n"
         msj_no_factible += "Por lo tanto la solución no es factible"
+    
+    if matriz.fase_1:
+        msj_no_factible+= "\nAl estar en la primera fase y ser solución no factible \nLa segunda fase no se realiza"
+    
     escribir_archivo(nombre_archivo, "\n" + msj_no_factible)
     print(msj_no_factible)
+    quit()
 
 def realizar_iteraciones(matriz, nombre_archivo):
 
@@ -488,9 +493,10 @@ def realizar_iteraciones(matriz, nombre_archivo):
 
     if matriz.fase_1:
         escribir_archivo(nombre_archivo,"Fase 1")
+        print("Fase 1")
     elif matriz.dos_fases:
         escribir_archivo(nombre_archivo,"Fase 2")
-    
+        print("Fase 2")
     while(True):
         if matriz.soluciones_multiples and not(matriz.dual):
             print(matriz.datos_sol_optima())
@@ -529,8 +535,7 @@ def realizar_iteraciones(matriz, nombre_archivo):
                 escribir_archivo(nombre_archivo,"\nIteracion Final")
 
             escribir_archivo(nombre_archivo, matriz.matriz_a_texto())
-            if not(matriz.fase_1): #Si es la fase 1 de un problema de dos fases, no se imprime
-                print(matriz.datos_sol_optima())
+            print(matriz.datos_sol_optima())
             escribir_archivo(nombre_archivo, matriz.datos_sol_optima())
             no_factible = verificar_artificiales(matriz.matriz, matriz.var_artificiales)
             if no_factible != 0:
@@ -570,7 +575,7 @@ def obtener_solucion(nombre_archivo):
     
     if matriz.dos_fases:
         matriz.matriz = modificar_artificiales(matriz.matriz,matriz.var_artificiales)
-        matriz.matriz = cambiar_fun_obj(matriz,diccionario_datos,matriz.es_max)
+        matriz.matriz = modificar_fun_objetivo_fase_2(matriz,diccionario_datos,matriz.es_max)
         matriz.fase_1 = False
         matriz = realizar_iteraciones(matriz, nombre_archivo)
 
@@ -631,7 +636,7 @@ def verificar_artificiales(matriz, var_artificiales):
             fila += 1
         return 0
 
-def cambiar_fun_obj(obj_matriz, diccionario_datos, es_maximizacion):
+def modificar_fun_objetivo_fase_2(obj_matriz, diccionario_datos, es_maximizacion):
     """ Cambia la función objetivo para la segunda fase
         E: matriz , diccionario de datos(diccionario) y es_maximización(booleano)
         S: matriz

@@ -116,7 +116,9 @@ class Matriz:
 
         for i in self.matriz[1][1:]:
             if i == 0:
-                if not(self.matriz[0][columna] in self.variables_basicas) and columna < len(self.matriz[0])-1:
+                if not(self.fase_1) and self.dos_fases and self.matriz[0][columna] in self.var_artificiales :
+                    self.FEV += [0]
+                elif not(self.matriz[0][columna] in self.variables_basicas) and columna < len(self.matriz[0])-1:
                     self.columna_pivote = (self.matriz[0][columna], columna)
                     self.FEV += [0]
                 else:
@@ -208,18 +210,22 @@ class Matriz:
             if n < 0:
                 return False
 
-        if (self.dos_fases):
+        if (self.dos_fases) and (self.fase_1):
             return True
 
         #Si no los hay entonces revisa por soluciones múltiples      
         if (not(self.soluciones_multiples)):
             self.encontrar_basicas()
             i = 1
-            while i < len(self.matriz[0])-2:
+            while i < len(self.matriz[0])-2 :
                 if funcion_objetivo[i-1] == 0:
                     if not(self.matriz[0][i] in self.variables_basicas):
-                        self.soluciones_multiples = True
-                        return False
+                        if self.dos_fases and self.matriz[0][i][0] == "R":
+                            return True
+                        else:
+                            self.soluciones_multiples = True
+                            return False
+                        
                 i += 1
         
         return True
